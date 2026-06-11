@@ -6,6 +6,10 @@ pub struct Statement<'a> {
   pub blank_line_before: bool,
   pub trailing_comment: Option<Token<'a>>,
   pub kind: StatementKind<'a>,
+  /// Byte range of this statement in the source, including an attached
+  /// trailing comment. Used to print a statement verbatim when it is
+  /// preceded by an ignore comment.
+  pub span: (usize, usize),
 }
 
 /// A block body together with whether the source actually closed it. An
@@ -52,8 +56,8 @@ pub enum StatementKind<'a> {
   },
 }
 
-pub fn parse<'a>(tokens: &[Token<'a>]) -> Vec<Statement<'a>> {
-  let mut parser = Parser { tokens, pos: 0 };
+pub fn parse<'a>(tokens: &[Token<'a>], source: &'a str) -> Vec<Statement<'a>> {
+  let mut parser = Parser { tokens, pos: 0, source };
   parser.parse_statements(true).body
 }
 
@@ -67,6 +71,7 @@ enum Terminator {
 struct Parser<'b, 'a> {
   tokens: &'b [Token<'a>],
   pos: usize,
+  source: &'a str,
 }
 
 impl<'b, 'a> Parser<'b, 'a> {
@@ -125,16 +130,24 @@ impl<'b, 'a> Parser<'b, 'a> {
       let blank_line_before = pending_newlines >= 2 && !statements.is_empty();
       pending_newlines = 0;
       let trailing_comment = self.try_take_trailing_comment();
+      let span_start = self.byte_offset(token.text);
+      let last_token = &self.tokens[self.pos - 1];
+      let span_end = self.byte_offset(last_token.text) + last_token.text.len();
       statements.push(Statement {
         blank_line_before,
         trailing_comment,
         kind,
+        span: (span_start, span_end),
       });
     }
     Block {
       body: statements,
       closed: top_level,
     }
+  }
+
+  fn byte_offset(&self, text: &str) -> usize {
+    text.as_ptr() as usize - self.source.as_ptr() as usize
   }
 
   fn try_take_trailing_comment(&mut self) -> Option<Token<'a>> {

@@ -15,6 +15,8 @@ pub struct Configuration {
   pub use_tabs: bool,
   pub indent_width: u8,
   pub new_line_kind: NewLineKind,
+  pub ignore_node_comment_text: String,
+  pub ignore_file_comment_text: String,
 }
 
 pub fn resolve_config(
@@ -54,6 +56,18 @@ pub fn resolve_config(
       global_config
         .new_line_kind
         .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.new_line_kind),
+      &mut diagnostics,
+    ),
+    ignore_node_comment_text: get_value(
+      &mut config,
+      "ignoreNodeCommentText",
+      "dprint-ignore".to_string(),
+      &mut diagnostics,
+    ),
+    ignore_file_comment_text: get_value(
+      &mut config,
+      "ignoreFileCommentText",
+      "dprint-ignore-file".to_string(),
       &mut diagnostics,
     ),
   };

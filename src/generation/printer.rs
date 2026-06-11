@@ -8,18 +8,41 @@ use super::tokenizer::Token;
 use super::tokenizer::TokenKind;
 use crate::configuration::Configuration;
 
-pub fn generate(statements: &[Statement], _config: &Configuration) -> PrintItems {
+pub struct Context<'a> {
+  pub source: &'a str,
+  pub ignore_directive: &'a str,
+}
+
+pub fn generate(statements: &[Statement], source: &str, config: &Configuration) -> PrintItems {
   let mut items = PrintItems::new();
-  gen_statements(statements, &mut items);
+  let ctx = Context {
+    source,
+    ignore_directive: &config.ignore_node_comment_text,
+  };
+  gen_statements(statements, &mut items, &ctx);
   items
 }
 
-fn gen_statements(statements: &[Statement], items: &mut PrintItems) {
+fn gen_statements(statements: &[Statement], items: &mut PrintItems, ctx: &Context) {
+  let mut ignore_next = false;
   for (i, statement) in statements.iter().enumerate() {
     if i > 0 && statement.blank_line_before {
       items.push_signal(Signal::NewLine);
     }
-    gen_statement(statement, items);
+    let is_comment = matches!(statement.kind, StatementKind::Comment { .. });
+    if ignore_next && !is_comment {
+      // print the statement exactly as it was written
+      push_text(items, ctx.source[statement.span.0..statement.span.1].trim_end());
+      items.push_signal(Signal::NewLine);
+      ignore_next = false;
+      continue;
+    }
+    if let StatementKind::Comment { token } = &statement.kind
+      && token.text.contains(ctx.ignore_directive)
+    {
+      ignore_next = true;
+    }
+    gen_statement(statement, items, ctx);
     if let Some(comment) = statement.trailing_comment {
       items.push_space();
       push_text(items, comment.text);
@@ -28,7 +51,7 @@ fn gen_statements(statements: &[Statement], items: &mut PrintItems) {
   }
 }
 
-fn gen_statement(statement: &Statement, items: &mut PrintItems) {
+fn gen_statement(statement: &Statement, items: &mut PrintItems, ctx: &Context) {
   match &statement.kind {
     StatementKind::Comment { token } => push_text(items, token.text),
     StatementKind::QualifiedRule { prelude, block } => {
@@ -40,7 +63,7 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems) {
           items.push_space();
         }
       }
-      gen_block(block, items);
+      gen_block(block, items, ctx);
     }
     StatementKind::AtRule {
       name,
@@ -61,7 +84,7 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems) {
           } else {
             items.push_space();
           }
-          gen_block(block, items);
+          gen_block(block, items, ctx);
         }
         None => {
           if *terminated {
@@ -112,7 +135,7 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems) {
   }
 }
 
-fn gen_block(block: &Block, items: &mut PrintItems) {
+fn gen_block(block: &Block, items: &mut PrintItems, ctx: &Context) {
   items.push_string("{".to_string());
   if block.body.is_empty() {
     if block.closed {
@@ -122,7 +145,7 @@ fn gen_block(block: &Block, items: &mut PrintItems) {
   } else {
     items.push_signal(Signal::StartIndent);
     items.push_signal(Signal::NewLine);
-    gen_statements(&block.body, items);
+    gen_statements(&block.body, items, ctx);
     items.push_signal(Signal::FinishIndent);
     if block.closed {
       items.push_string("}".to_string());

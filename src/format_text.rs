@@ -15,12 +15,15 @@ pub fn format_text(_path: &Path, text: &str, config: &Configuration) -> Result<O
 fn format_text_inner(text: &str, config: &Configuration) -> Result<String> {
   let text = text.strip_prefix('\u{FEFF}').unwrap_or(text);
   let tokens = generation::tokenize(text);
-  let statements = generation::parse(&tokens);
+  if has_ignore_file_comment(&tokens, &config.ignore_file_comment_text) {
+    return Ok(text.to_string());
+  }
+  let statements = generation::parse(&tokens, text);
   if statements.is_empty() {
     return Ok(String::new());
   }
   Ok(dprint_core::formatting::format(
-    || generation::generate(&statements, config),
+    || generation::generate(&statements, text, config),
     PrintOptions {
       indent_width: config.indent_width,
       max_width: config.line_width,
@@ -28,4 +31,21 @@ fn format_text_inner(text: &str, config: &Configuration) -> Result<String> {
       new_line_text: resolve_new_line_kind(text, config.new_line_kind),
     },
   ))
+}
+
+/// True when a comment in the file header, before any other construct,
+/// contains the ignore file directive.
+fn has_ignore_file_comment(tokens: &[generation::Token], directive: &str) -> bool {
+  for token in tokens {
+    match token.kind {
+      generation::TokenKind::Whitespace { .. } => {}
+      generation::TokenKind::LineComment | generation::TokenKind::BlockComment => {
+        if token.text.contains(directive) {
+          return true;
+        }
+      }
+      _ => return false,
+    }
+  }
+  false
 }
