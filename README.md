@@ -25,8 +25,14 @@ supported.
 
 ## Status
 
-Experimental. Line width aware wrapping of long values and selectors is not
-implemented yet; long lines are kept as-is.
+Experimental.
+
+Long values and at-rule preludes wrap at the configured `lineWidth`, but a
+line break is only ever introduced where the author already had whitespace,
+so constructs where a space is meaningful (Tailwind arbitrary values, unicode
+ranges, unquoted urls) are never broken apart. Author newlines inside values
+are preserved, so hand formatted multi line font stacks, `grid-template-areas`
+blocks, and SCSS maps keep their shape. Selectors are never wrapped.
 
 ## Configuration
 

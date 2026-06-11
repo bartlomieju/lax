@@ -1,0 +1,64 @@
+~~ lineWidth: 40 ~~
+== should wrap long values at author spaces ==
+a {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+[expect]
+a {
+  font-family: ui-monospace,
+    SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
+}
+
+== should never wrap where the author had no space ==
+a {
+  transition-timing-function: cubic-bezier(0.17567890,0.88567890,0.32567890,1.27567890);
+}
+
+[expect]
+a {
+  transition-timing-function: cubic-bezier(0.17567890,0.88567890,0.32567890,1.27567890);
+}
+
+== should preserve author newlines in values ==
+.ddoc .docNodeKindIcon div {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    monospace;
+}
+
+[expect]
+.ddoc .docNodeKindIcon div {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    monospace;
+}
+
+== should preserve grid-template-areas shape ==
+.grid {
+  grid-template-areas:
+    "header header"
+    "sidebar main"
+    "footer footer";
+}
+
+[expect]
+.grid {
+  grid-template-areas:
+    "header header"
+    "sidebar main"
+    "footer footer";
+}
+
+== should keep short values on one line ==
+a {
+  color: red;
+}
+
+[expect]
+a {
+  color: red;
+}

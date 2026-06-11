@@ -24,6 +24,8 @@ pub enum StatementKind<'a> {
     value: Vec<Token<'a>>,
     /// Custom property values are preserved verbatim.
     verbatim_value: bool,
+    /// The author put the value on its own line after the colon.
+    value_on_new_line: bool,
   },
   Comment {
     token: Token<'a>,
@@ -246,10 +248,16 @@ impl<'b, 'a> Parser<'b, 'a> {
             let name = trim_ws(&self.tokens[start..colon]);
             let value = trim_ws(&self.tokens[colon + 1..end]);
             let verbatim_value = name.len() == 1 && name[0].kind == TokenKind::Ident && name[0].text.starts_with("--");
+            let value_on_new_line = !value.is_empty()
+              && matches!(
+                self.tokens.get(colon + 1),
+                Some(Token { kind: TokenKind::Whitespace { newlines }, .. }) if *newlines > 0
+              );
             Some(StatementKind::Declaration {
               name,
               value,
               verbatim_value,
+              value_on_new_line,
             })
           }
           _ => Some(StatementKind::Raw {
