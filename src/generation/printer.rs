@@ -45,7 +45,7 @@ fn gen_statements(statements: &[Statement], items: &mut PrintItems, ctx: &Contex
     gen_statement(statement, items, ctx);
     if let Some(comment) = statement.trailing_comment {
       items.push_space();
-      push_text(items, comment.text);
+      push_comment(items, ctx, &comment);
     }
     items.push_signal(Signal::NewLine);
   }
@@ -53,7 +53,7 @@ fn gen_statements(statements: &[Statement], items: &mut PrintItems, ctx: &Contex
 
 fn gen_statement(statement: &Statement, items: &mut PrintItems, ctx: &Context) {
   match &statement.kind {
-    StatementKind::Comment { token } => push_text(items, token.text),
+    StatementKind::Comment { token } => push_comment(items, ctx, token),
     StatementKind::QualifiedRule { prelude, block } => {
       if !prelude.is_empty() {
         gen_selector(prelude, items);
@@ -354,6 +354,41 @@ fn gen_verbatim(tokens: &[Token], items: &mut PrintItems) {
     text.push_str(token.text);
   }
   push_text(items, &text);
+}
+
+/// Prints a comment, realigning the interior of a multi line comment
+/// relative to the comment's new position. Interior lines keep their
+/// indentation relative to the line the comment started on, instead of
+/// their absolute columns, so a comment stays stable when the statement
+/// around it is reindented, for example by a markup formatter indenting an
+/// embedded style block.
+fn push_comment(items: &mut PrintItems, ctx: &Context, token: &Token) {
+  let text = token.text;
+  if !text.contains('\n') {
+    push_text(items, text);
+    return;
+  }
+  let offset = text.as_ptr() as usize - ctx.source.as_ptr() as usize;
+  let line_start = ctx.source[..offset].rfind('\n').map(|i| i + 1).unwrap_or(0);
+  let original_column = ctx.source[line_start..offset].chars().count();
+  let mut lines = text.split('\n');
+  if let Some(first) = lines.next() {
+    push_text_line(items, first.trim_end());
+  }
+  for line in lines {
+    items.push_signal(Signal::NewLine);
+    let line = line.trim_end();
+    let mut remaining = original_column;
+    let line = line.trim_start_matches(|c: char| {
+      if remaining > 0 && (c == ' ' || c == '\t') {
+        remaining -= 1;
+        true
+      } else {
+        false
+      }
+    });
+    push_text_line(items, line);
+  }
 }
 
 /// Pushes text that may contain newlines or tabs. Lines after the first are

@@ -139,3 +139,19 @@ a { color: red !important; }
 a {
   color: red !important;
 }
+
+== should realign multi line comment interiors with their statement ==
+    /* 
+        CSS 
+    */
+    body {
+        font-family: 'Arial', sans-serif;
+    }
+
+[expect]
+/*
+    CSS
+*/
+body {
+  font-family: 'Arial', sans-serif;
+}
