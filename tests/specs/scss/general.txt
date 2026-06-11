@@ -12,7 +12,7 @@ $primary: #333;
 .btn {
   color: $primary;
   &:hover {
-    color: lighten($primary, 10%);
+    color: lighten($primary,10%);
   }
   // line comment
   .icon-#{$name} {
@@ -25,7 +25,7 @@ $primary: #333;
 .box{@include foo(1px);}
 
 [expect]
-@mixin foo($a, $b: 10px) {
+@mixin foo($a,$b: 10px) {
   margin: $a $b;
 }
 .box {

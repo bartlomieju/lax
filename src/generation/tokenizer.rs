@@ -15,7 +15,8 @@ pub enum TokenKind {
   /// An unquoted url token, including the function name and both parens.
   Url,
   Number,
-  /// SCSS `#{...}` or Less `@{...}` interpolation kept as one opaque token.
+  /// SCSS `#{...}`, Less `@{...}`, or JS template `${...}` interpolation
+  /// kept as one opaque token.
   Interpolation,
   Colon,
   Semicolon,
@@ -66,7 +67,7 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
     {
       i = scan_number(bytes, i + 1);
       TokenKind::Number
-    } else if (b == b'#' || b == b'@') && peek(bytes, i + 1) == Some(b'{') {
+    } else if (b == b'#' || b == b'@' || b == b'$') && peek(bytes, i + 1) == Some(b'{') {
       i = scan_interpolation(bytes, i + 2);
       TokenKind::Interpolation
     } else if b == b'#' && peek_name_char(bytes, i + 1) {

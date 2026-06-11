@@ -93,8 +93,8 @@ fn gen_block(body: &[Statement], items: &mut PrintItems) {
 /// Prints a token sequence, only ever normalizing whitespace. Existing
 /// whitespace between tokens collapses to a single space and whitespace is
 /// never added where the author had none, so token text is never reinterpreted.
-/// The exceptions are commas (no space before, always a space after) and the
-/// inside edges of parens and brackets (no space).
+/// The exceptions are commas (never a space before) and the inside edges of
+/// parens and brackets (no space).
 fn gen_tokens(tokens: &[Token], items: &mut PrintItems, selector: bool) {
   let mut depth = 0u32;
   let mut pending_space = false;
@@ -107,13 +107,15 @@ fn gen_tokens(tokens: &[Token], items: &mut PrintItems, selector: bool) {
         }
       }
       TokenKind::Comma => {
+        // no space before a comma; whether a space follows is decided by
+        // the source, since a space can be meaningful, for example inside
+        // Tailwind arbitrary values like `ease-[cubic-bezier(0.4,0,0.1,1)]`
         pending_space = false;
         items.push_string(",".to_string());
         if selector && depth == 0 {
           items.push_signal(Signal::NewLine);
           suppress_space = true;
         } else {
-          pending_space = true;
           suppress_space = false;
         }
       }

@@ -1,0 +1,85 @@
+== denoland/deno#34582 slotted owl selector should not error ==
+::slotted(* + *) {
+  background-color: gainsboro;
+}
+
+[expect]
+::slotted(* + *) {
+  background-color: gainsboro;
+}
+
+== denoland/deno#30041 scroll-state container query should not error ==
+@container my-container scroll-state(scrollable: top) {
+	/* CSS rules go here */
+}
+
+[expect]
+@container my-container scroll-state(scrollable: top) {
+  /* CSS rules go here */
+}
+
+== denoland/deno#29686 template interpolation without semicolon should not error ==
+a {
+  ${SOME_STYLE}
+}
+
+[expect]
+a {
+  ${SOME_STYLE}
+}
+
+== denoland/deno#25926 theme() dotted path must not be rewritten ==
+:root {
+	--color-accent-fg: theme(colors.slate.100) !important;
+}
+a {
+  color: theme(colors.slate.100);
+}
+
+[expect]
+:root {
+  --color-accent-fg: theme(colors.slate.100) !important;
+}
+a {
+  color: theme(colors.slate.100);
+}
+
+== denoland/deno#26164 unicode-range must not be rewritten ==
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400 600;
+  font-display: swap;
+  font-style: oblique 0 10deg;
+  src: url("/fonts/inter.woff2") format("woff2");
+  unicode-range: U+0-00FF, U+131, U+152-0153, U+2BB-02BC, U+2C6, U+2DA, U+2DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+[expect]
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400 600;
+  font-display: swap;
+  font-style: oblique 0 10deg;
+  src: url("/fonts/inter.woff2") format("woff2");
+  unicode-range: U+0-00FF, U+131, U+152-0153, U+2BB-02BC, U+2C6, U+2DA, U+2DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+== denoland/deno#27574 tailwind arbitrary value commas must stay tight ==
+.ease-custom {
+  @apply ease-[cubic-bezier(0.4,0,0.1,1)];
+}
+
+[expect]
+.ease-custom {
+  @apply ease-[cubic-bezier(0.4,0,0.1,1)];
+}
+
+== denoland/deno#32922 tailwind apply with arbitrary shadows must not break classes ==
+.button {
+  @apply relative overflow-hidden px-6 shadow-[0px_2px_4px_0px_rgba(10,13,18,0.1)] [transition-timing-function:cubic-bezier(0.175,0.885,0.32,1.275)] active:translate-y-[1px] cursor-pointer;
+}
+
+[expect]
+.button {
+  @apply relative overflow-hidden px-6 shadow-[0px_2px_4px_0px_rgba(10,13,18,0.1)] [transition-timing-function:cubic-bezier(0.175,0.885,0.32,1.275)] active:translate-y-[1px] cursor-pointer;
+}

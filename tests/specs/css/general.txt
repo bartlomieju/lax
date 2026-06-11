@@ -92,12 +92,20 @@ b {
   --case-Sensitive: SomeValue;
 }
 
-== should normalize function spacing ==
+== should trim paren edges and never add comma spacing ==
 a { transform: translate( 1px ,2px ); }
 
 [expect]
 a {
-  transform: translate(1px, 2px);
+  transform: translate(1px,2px);
+}
+
+== should keep comma spacing the author wrote ==
+a { font-family: Arial, sans-serif; }
+
+[expect]
+a {
+  font-family: Arial, sans-serif;
 }
 
 == should handle at rules without blocks ==
