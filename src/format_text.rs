@@ -33,12 +33,17 @@ fn format_text_inner(text: &str, config: &Configuration) -> Result<String> {
   ))
 }
 
-/// True when a comment in the file header, before any other construct,
-/// contains the ignore file directive.
+/// True when a comment in the first comment cluster of the file contains the
+/// ignore file directive. The cluster starts on the first line and ends at
+/// the first blank line or non comment construct.
 fn has_ignore_file_comment(tokens: &[generation::Token], directive: &str) -> bool {
-  for token in tokens {
+  for (index, token) in tokens.iter().enumerate() {
     match token.kind {
-      generation::TokenKind::Whitespace { .. } => {}
+      generation::TokenKind::Whitespace { newlines } => {
+        if newlines >= 2 || (index == 0 && newlines >= 1) {
+          return false;
+        }
+      }
       generation::TokenKind::LineComment | generation::TokenKind::BlockComment => {
         if token.text.contains(directive) {
           return true;

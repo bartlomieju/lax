@@ -119,3 +119,16 @@ select c from t;
 select    a,    b from t;
 select c
 from t;
+
+== ignore file directive only counts in the first comment cluster ==
+-- a header comment
+
+-- dprint-ignore-file
+select    a from t;
+
+[expect]
+-- a header comment
+
+-- dprint-ignore-file
+select a
+from t;
