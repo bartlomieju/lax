@@ -1,6 +1,7 @@
 use dprint_core::formatting::PrintItems;
 use dprint_core::formatting::Signal;
 
+use super::parser::Block;
 use super::parser::Statement;
 use super::parser::StatementKind;
 use super::tokenizer::Token;
@@ -30,34 +31,45 @@ fn gen_statements(statements: &[Statement], items: &mut PrintItems) {
 fn gen_statement(statement: &Statement, items: &mut PrintItems) {
   match &statement.kind {
     StatementKind::Comment { token } => push_text(items, token.text),
-    StatementKind::QualifiedRule { prelude, body } => {
+    StatementKind::QualifiedRule { prelude, block } => {
       if !prelude.is_empty() {
         gen_selector(prelude, items);
-        items.push_space();
+        if ends_with_line_comment(prelude) {
+          items.push_signal(Signal::NewLine);
+        } else {
+          items.push_space();
+        }
       }
-      gen_block(body, items);
+      gen_block(block, items);
     }
-    StatementKind::AtRule { name, prelude, body } => {
+    StatementKind::AtRule {
+      name,
+      prelude,
+      block,
+      terminated,
+    } => {
       items.push_string(name.text.to_string());
       if !prelude.is_empty() {
         items.push_space();
         gen_value(prelude, items, false);
       }
       let after_line_comment = ends_with_line_comment(prelude);
-      match body {
-        Some(body) => {
+      match block {
+        Some(block) => {
           if after_line_comment {
             items.push_signal(Signal::NewLine);
           } else {
             items.push_space();
           }
-          gen_block(body, items);
+          gen_block(block, items);
         }
         None => {
-          if after_line_comment {
-            items.push_signal(Signal::NewLine);
+          if *terminated {
+            if after_line_comment {
+              items.push_signal(Signal::NewLine);
+            }
+            items.push_string(";".to_string());
           }
-          items.push_string(";".to_string());
         }
       }
     }
@@ -66,6 +78,7 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems) {
       value,
       verbatim_value,
       value_on_new_line,
+      terminated,
     } => {
       gen_selector(name, items);
       items.push_string(":".to_string());
@@ -78,12 +91,14 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems) {
             items.push_space();
           }
           gen_value(value, items, *value_on_new_line);
-          if ends_with_line_comment(value) {
+          if *terminated && ends_with_line_comment(value) {
             items.push_signal(Signal::NewLine);
           }
         }
       }
-      items.push_string(";".to_string());
+      if *terminated {
+        items.push_string(";".to_string());
+      }
     }
     StatementKind::Raw { tokens, semicolon } => {
       gen_value(tokens, items, false);
@@ -97,17 +112,22 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems) {
   }
 }
 
-fn gen_block(body: &[Statement], items: &mut PrintItems) {
+fn gen_block(block: &Block, items: &mut PrintItems) {
   items.push_string("{".to_string());
-  if body.is_empty() {
-    items.push_signal(Signal::NewLine);
+  if block.body.is_empty() {
+    if block.closed {
+      items.push_signal(Signal::NewLine);
+      items.push_string("}".to_string());
+    }
   } else {
     items.push_signal(Signal::StartIndent);
     items.push_signal(Signal::NewLine);
-    gen_statements(body, items);
+    gen_statements(&block.body, items);
     items.push_signal(Signal::FinishIndent);
+    if block.closed {
+      items.push_string("}".to_string());
+    }
   }
-  items.push_string("}".to_string());
 }
 
 /// Prints a selector or declaration name. Top level commas put each selector
@@ -153,7 +173,14 @@ fn gen_selector(tokens: &[Token], items: &mut PrintItems) {
           pending_space = false;
         }
         push_text(items, token.text);
-        swallow_ws = is_open;
+        // nothing may share a line with a line comment, or it would be
+        // absorbed into the comment when the output is parsed again
+        if token.kind == TokenKind::LineComment {
+          items.push_signal(Signal::NewLine);
+          swallow_ws = true;
+        } else {
+          swallow_ws = is_open;
+        }
       }
     }
   }
@@ -226,9 +253,15 @@ fn gen_value(tokens: &[Token], items: &mut PrintItems, starts_on_new_line: bool)
           let marked = groups.iter().filter(|m| **m).count();
           set_extra_indent(items, &mut extra_indent, marked);
           items.push_signal(Signal::NewLine);
+          pending = Pending::None;
+          items.push_string(token.text.to_string());
+          // the dedent applies to the closing paren line only; restore the
+          // continuation baseline so later breaks land at a stable level
+          set_extra_indent(items, &mut extra_indent, marked.max(1));
+        } else {
+          pending = Pending::None;
+          items.push_string(token.text.to_string());
         }
-        pending = Pending::None;
-        items.push_string(token.text.to_string());
         after_open = false;
         emitted = true;
       }
@@ -244,6 +277,11 @@ fn gen_value(tokens: &[Token], items: &mut PrintItems, starts_on_new_line: bool)
         }
         pending = Pending::None;
         push_text(items, token.text);
+        // nothing may share a line with a line comment, or it would be
+        // absorbed into the comment when the output is parsed again
+        if token.kind == TokenKind::LineComment {
+          pending = Pending::Newline;
+        }
         let is_open = matches!(
           token.kind,
           TokenKind::OpenParen | TokenKind::OpenBracket | TokenKind::Function
@@ -288,27 +326,35 @@ fn gen_verbatim(tokens: &[Token], items: &mut PrintItems) {
   push_text(items, &text);
 }
 
-/// Pushes text that may contain newlines. Lines after the first are printed
-/// verbatim without applying the current indentation level.
+/// Pushes text that may contain newlines or tabs. Lines after the first are
+/// printed verbatim without applying the current indentation level, and tabs
+/// are sent as tab print items because the printer rejects raw tabs.
 fn push_text(items: &mut PrintItems, text: &str) {
   if !text.contains('\n') {
-    items.push_string(text.to_string());
+    push_text_line(items, text);
     return;
   }
   let mut lines = text.split('\n');
   if let Some(first) = lines.next() {
-    let first = first.trim_end_matches('\r');
-    if !first.is_empty() {
-      items.push_string(first.to_string());
-    }
+    push_text_line(items, first.trim_end_matches('\r'));
   }
   items.push_signal(Signal::StartIgnoringIndent);
   for line in lines {
     items.push_signal(Signal::NewLine);
-    let line = line.trim_end_matches('\r');
-    if !line.is_empty() {
-      items.push_string(line.to_string());
-    }
+    push_text_line(items, line.trim_end_matches('\r'));
   }
   items.push_signal(Signal::FinishIgnoringIndent);
+}
+
+fn push_text_line(items: &mut PrintItems, line: &str) {
+  let mut first = true;
+  for part in line.split('\t') {
+    if !first {
+      items.push_signal(Signal::Tab);
+    }
+    first = false;
+    if !part.is_empty() {
+      items.push_string(part.to_string());
+    }
+  }
 }

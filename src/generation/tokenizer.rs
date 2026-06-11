@@ -199,7 +199,24 @@ fn scan_string(bytes: &[u8], mut i: usize, quote: u8) -> usize {
     if b == b'\\' {
       i += 1;
       if i < bytes.len() {
-        i += utf8_len(bytes[i]);
+        if bytes[i].is_ascii_hexdigit() {
+          // a hex escape is up to six hex digits and consumes one following
+          // whitespace character, which may be a newline
+          let mut digits = 0;
+          while i < bytes.len() && digits < 6 && bytes[i].is_ascii_hexdigit() {
+            i += 1;
+            digits += 1;
+          }
+          if i < bytes.len() && is_whitespace(bytes[i]) {
+            if bytes[i] == b'\r' && peek(bytes, i + 1) == Some(b'\n') {
+              i += 2;
+            } else {
+              i += 1;
+            }
+          }
+        } else {
+          i += utf8_len(bytes[i]);
+        }
       }
     } else if b == quote {
       i += 1;
@@ -257,7 +274,7 @@ fn scan_interpolation(bytes: &[u8], mut i: usize) -> usize {
 }
 
 fn url_args_are_quoted(bytes: &[u8], mut i: usize) -> bool {
-  while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+  while i < bytes.len() && is_whitespace(bytes[i]) {
     i += 1;
   }
   matches!(peek(bytes, i), Some(b'"') | Some(b'\''))
@@ -272,6 +289,12 @@ fn scan_url(bytes: &[u8], mut i: usize) -> usize {
         if i < bytes.len() {
           i += utf8_len(bytes[i]);
         }
+      }
+      // a quote inside an unquoted url is invalid, but a paren inside that
+      // string must not end the url token
+      b'"' | b'\'' => {
+        let quote = bytes[i];
+        i = scan_string(bytes, i + 1, quote);
       }
       _ => i += 1,
     }

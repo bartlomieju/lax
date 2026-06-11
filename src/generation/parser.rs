@@ -8,16 +8,28 @@ pub struct Statement<'a> {
   pub kind: StatementKind<'a>,
 }
 
+/// A block body together with whether the source actually closed it. An
+/// unclosed block at the end of the file is printed without a closing brace
+/// so that truncated input stays stable across formatting passes.
+#[derive(Debug)]
+pub struct Block<'a> {
+  pub body: Vec<Statement<'a>>,
+  pub closed: bool,
+}
+
 #[derive(Debug)]
 pub enum StatementKind<'a> {
   QualifiedRule {
     prelude: Vec<Token<'a>>,
-    body: Vec<Statement<'a>>,
+    block: Block<'a>,
   },
   AtRule {
     name: Token<'a>,
     prelude: Vec<Token<'a>>,
-    body: Option<Vec<Statement<'a>>>,
+    block: Option<Block<'a>>,
+    /// False when the at-rule was cut off by the end of the file, in which
+    /// case no semicolon is added.
+    terminated: bool,
   },
   Declaration {
     name: Vec<Token<'a>>,
@@ -26,6 +38,9 @@ pub enum StatementKind<'a> {
     verbatim_value: bool,
     /// The author put the value on its own line after the colon.
     value_on_new_line: bool,
+    /// False when the declaration was cut off by the end of the file, in
+    /// which case no semicolon is added.
+    terminated: bool,
   },
   Comment {
     token: Token<'a>,
@@ -39,7 +54,7 @@ pub enum StatementKind<'a> {
 
 pub fn parse<'a>(tokens: &[Token<'a>]) -> Vec<Statement<'a>> {
   let mut parser = Parser { tokens, pos: 0 };
-  parser.parse_statements(true)
+  parser.parse_statements(true).body
 }
 
 enum Terminator {
@@ -59,7 +74,7 @@ impl<'b, 'a> Parser<'b, 'a> {
     self.tokens.get(self.pos)
   }
 
-  fn parse_statements(&mut self, top_level: bool) -> Vec<Statement<'a>> {
+  fn parse_statements(&mut self, top_level: bool) -> Block<'a> {
     let mut statements: Vec<Statement<'a>> = Vec::new();
     let mut pending_newlines = 0u32;
     loop {
@@ -78,7 +93,10 @@ impl<'b, 'a> Parser<'b, 'a> {
         TokenKind::CloseBrace => {
           self.pos += 1;
           if !top_level {
-            return statements;
+            return Block {
+              body: statements,
+              closed: true,
+            };
           }
           // a stray close brace at the top level is kept as raw text
           StatementKind::Raw {
@@ -113,7 +131,10 @@ impl<'b, 'a> Parser<'b, 'a> {
         kind,
       });
     }
-    statements
+    Block {
+      body: statements,
+      closed: top_level,
+    }
   }
 
   fn try_take_trailing_comment(&mut self) -> Option<Token<'a>> {
@@ -149,18 +170,20 @@ impl<'b, 'a> Parser<'b, 'a> {
           return StatementKind::AtRule {
             name,
             prelude,
-            body: None,
+            block: None,
+            terminated: true,
           };
         }
         TokenKind::OpenBrace => {
           if depth == 0 {
             let prelude = trim_ws(&self.tokens[prelude_start..self.pos]);
             self.pos += 1;
-            let body = self.parse_statements(false);
+            let block = self.parse_statements(false);
             return StatementKind::AtRule {
               name,
               prelude,
-              body: Some(body),
+              block: Some(block),
+              terminated: true,
             };
           }
           depth += 1;
@@ -172,7 +195,8 @@ impl<'b, 'a> Parser<'b, 'a> {
             return StatementKind::AtRule {
               name,
               prelude,
-              body: None,
+              block: None,
+              terminated: true,
             };
           }
           depth -= 1;
@@ -185,7 +209,8 @@ impl<'b, 'a> Parser<'b, 'a> {
     StatementKind::AtRule {
       name,
       prelude,
-      body: None,
+      block: None,
+      terminated: false,
     }
   }
 
@@ -233,8 +258,8 @@ impl<'b, 'a> Parser<'b, 'a> {
       Terminator::OpenBrace(end) => {
         let prelude = trim_ws(&self.tokens[start..end]);
         self.pos = end + 1;
-        let body = self.parse_statements(false);
-        Some(StatementKind::QualifiedRule { prelude, body })
+        let block = self.parse_statements(false);
+        Some(StatementKind::QualifiedRule { prelude, block })
       }
       Terminator::Semicolon(end) | Terminator::CloseBrace(end) | Terminator::Eof(end) => {
         let had_semicolon = matches!(terminator, Terminator::Semicolon(_));
@@ -258,6 +283,7 @@ impl<'b, 'a> Parser<'b, 'a> {
               value,
               verbatim_value,
               value_on_new_line,
+              terminated: !matches!(terminator, Terminator::Eof(_)),
             })
           }
           _ => Some(StatementKind::Raw {

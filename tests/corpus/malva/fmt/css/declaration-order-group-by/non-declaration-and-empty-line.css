@@ -1,0 +1,28 @@
+/*cfg declarationOrder = "alphabetical"
+      declarationOrderGroupBy = "nonDeclarationAndEmptyLine"*/
+div {
+  z: 0;
+  y: 0;
+  x: 0;
+  & {}
+  f: 0;
+  e: 0;
+
+  d: 0;
+  c: 0;
+  /* b */
+  b: 0;
+  a: 0;
+
+  & {}
+}
+
+div {
+  font-family-primary: 'Arial';
+
+  color-primary: #00ff00;
+  color-primary-rgb: 0, 255, 0;
+
+  color-secondary: #0000ff;
+  color-secondary-rgb: 0, 0, 255;
+}

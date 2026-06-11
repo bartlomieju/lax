@@ -1,0 +1,19 @@
+.phone {
+    &_title {
+        width: 500px;
+        @media (max-width: 500px) {
+            width: auto;
+        }
+        body.is_dark & {
+            color: white;
+        }
+    }
+    img {
+        display: block;
+    }
+
+    >img{}
+    +img{}
+    ~img{}
+    ||img{}
+}
