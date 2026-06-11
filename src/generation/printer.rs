@@ -41,7 +41,7 @@ fn gen_statements(statements: &[Statement], items: &mut PrintItems, ctx: &Contex
       continue;
     }
     if let StatementKind::Comment { token } = &statement.kind
-      && token.text.contains(ctx.ignore_directive)
+      && contains_directive(token.text, ctx.ignore_directive)
     {
       ignore_next = true;
     }
@@ -200,6 +200,15 @@ fn apply_keyword_case(word: &str, case: KeywordCase) -> String {
     KeywordCase::Lower if is_keyword(word) => word.to_ascii_lowercase(),
     _ => word.to_string(),
   }
+}
+
+/// True when the comment contains the directive as a whole word, so that an
+/// ignore file directive does not also match the plain ignore directive it
+/// starts with.
+fn contains_directive(text: &str, directive: &str) -> bool {
+  text.match_indices(directive).any(|(index, _)| {
+    !text[index + directive.len()..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+  })
 }
 
 fn set_extra_indent(items: &mut PrintItems, current: &mut usize, desired: usize) {
