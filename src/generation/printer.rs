@@ -107,8 +107,15 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems, ctx: &Context) {
       items.push_string(":".to_string());
       if !value.is_empty() {
         if *verbatim_value {
-          items.push_space();
-          gen_verbatim(value, items);
+          if *value_on_new_line {
+            items.push_signal(Signal::StartIndent);
+            items.push_signal(Signal::NewLine);
+            gen_verbatim(value, items);
+            items.push_signal(Signal::FinishIndent);
+          } else {
+            items.push_space();
+            gen_verbatim(value, items);
+          }
         } else {
           if !*value_on_new_line {
             items.push_space();
