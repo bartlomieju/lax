@@ -21,7 +21,8 @@ Concretely, that means:
 SCSS and Less are supported through the same generic model. `#{...}` and
 `@{...}` interpolations are treated as opaque tokens, and `//` line comments
 are recognized everywhere. The indented Sass syntax (`.sass` files) is not
-supported.
+supported and there are no plans to support it; Prettier and Biome do not
+support it either, and SCSS is the dominant syntax in practice.
 
 ## Status
 
