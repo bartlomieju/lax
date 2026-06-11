@@ -103,17 +103,17 @@ dependencies = [
 
 [[package]]
 name = "dprint-core"
-version = "0.68.1"
+version = "0.67.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8698cce2d4defd77683dd360c67351643523c4f87ad177b6574978d0f05e4836"
+checksum = "2c1d827947704a9495f705d6aeed270fa21a67f825f22902c28f38dc3af7a9ae"
 dependencies = [
+ "anyhow",
  "bumpalo",
  "hashbrown 0.15.5",
  "indexmap",
  "rustc-hash",
  "serde",
  "serde_json",
- "thiserror",
  "unicode-width",
 ]
 
@@ -206,7 +206,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "lax-css"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "dprint-core",

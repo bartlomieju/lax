@@ -4,7 +4,6 @@ use dprint_core::generate_plugin_code;
 use dprint_core::plugins::CheckConfigUpdatesMessage;
 use dprint_core::plugins::ConfigChange;
 use dprint_core::plugins::FileMatchingInfo;
-use dprint_core::plugins::FormatError;
 use dprint_core::plugins::FormatResult;
 use dprint_core::plugins::PluginInfo;
 use dprint_core::plugins::PluginResolveConfigurationResult;
@@ -34,7 +33,7 @@ impl SyncPluginHandler<Configuration> for CssPluginHandler {
     }
   }
 
-  fn check_config_updates(&self, _message: CheckConfigUpdatesMessage) -> Result<Vec<ConfigChange>, FormatError> {
+  fn check_config_updates(&self, _message: CheckConfigUpdatesMessage) -> Result<Vec<ConfigChange>, anyhow::Error> {
     Ok(Vec::new())
   }
 
@@ -62,10 +61,9 @@ impl SyncPluginHandler<Configuration> for CssPluginHandler {
     request: SyncFormatRequest<Configuration>,
     _format_with_host: impl FnMut(SyncHostFormatRequest) -> FormatResult,
   ) -> FormatResult {
-    let file_text = String::from_utf8(request.file_bytes).map_err(FormatError::new)?;
+    let file_text = String::from_utf8(request.file_bytes)?;
     crate::format_text(request.file_path, &file_text, request.config)
       .map(|maybe_text| maybe_text.map(|text| text.into_bytes()))
-      .map_err(FormatError::new)
   }
 }
 
