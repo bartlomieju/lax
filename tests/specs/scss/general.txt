@@ -37,3 +37,15 @@ $breakpoints: (small: 576px, medium: 768px);
 
 [expect]
 $breakpoints: (small: 576px, medium: 768px);
+
+== should keep the closing paren out of a line comment ==
+.btn {
+  width: calc(1px + 2px // why
+  );
+}
+
+[expect]
+.btn {
+  width: calc(1px + 2px // why
+    );
+}

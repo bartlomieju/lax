@@ -289,6 +289,14 @@ fn gen_value(tokens: &[Token], items: &mut PrintItems, starts_on_new_line: bool)
           // continuation baseline so later breaks land at a stable level
           set_extra_indent(items, &mut extra_indent, marked.max(1));
         } else {
+          // a space before a closing paren is dropped, but an author
+          // newline is kept; it may also be load bearing when a line
+          // comment precedes the paren
+          if pending == Pending::Newline {
+            let marked = groups.iter().filter(|m| **m).count();
+            set_extra_indent(items, &mut extra_indent, marked.max(1));
+            items.push_signal(Signal::NewLine);
+          }
           pending = Pending::None;
           items.push_string(token.text.to_string());
         }
