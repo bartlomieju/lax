@@ -43,3 +43,17 @@ a   {  color:red;background:blue   }
 /* dprint-ignore-file */
 a   {  color:red;background:blue   }
    b{margin:0}
+
+== ignore file directive in the body does not ignore the next statement ==
+a { color: red; }
+/* dprint-ignore-file */
+b   {  color:red  }
+
+[expect]
+a {
+  color: red;
+}
+/* dprint-ignore-file */
+b {
+  color: red;
+}
