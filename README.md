@@ -1,0 +1,47 @@
+# dprint-plugin-css
+
+Lenient CSS, SCSS, and Less formatter for [dprint](https://dprint.dev).
+
+## Philosophy
+
+This formatter is deliberately lax. It is built on the generic, semantics-free
+parsing model from CSS Syntax Level 3: the parser does not know what any
+at-rule, property, or value means, and the printer only ever adjusts
+whitespace, indentation, and line breaks.
+
+Concretely, that means:
+
+- Casing is never changed. `prefersDark: true` inside an unknown at-rule
+  stays exactly as written.
+- Values are never rewritten, reordered, or normalized.
+- Unknown or future syntax formats fine, because nothing is special-cased.
+  Tailwind directives, vendor hacks, and tomorrow's at-rules all pass through.
+- Custom property values are preserved verbatim, including inner whitespace.
+
+SCSS and Less are supported through the same generic model. `#{...}` and
+`@{...}` interpolations are treated as opaque tokens, and `//` line comments
+are recognized everywhere. The indented Sass syntax (`.sass` files) is not
+supported.
+
+## Status
+
+Experimental. Line width aware wrapping of long values and selectors is not
+implemented yet; long lines are kept as-is.
+
+## Configuration
+
+| Key           | Default | Description                       |
+| ------------- | ------- | --------------------------------- |
+| `lineWidth`   | `120`   | Target maximum line width.        |
+| `indentWidth` | `2`     | Number of spaces per indent.      |
+| `useTabs`     | `false` | Use tabs instead of spaces.       |
+| `newLineKind` | `lf`    | Kind of newline to use.           |
+
+## Development
+
+```bash
+cargo test
+```
+
+Spec tests live in `tests/specs`. Each file contains one or more cases with
+the input followed by an `[expect]` block.

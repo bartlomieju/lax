@@ -1,0 +1,27 @@
+== should format less constructs ==
+@primary: #1e90ff;
+.box {
+  color: @primary;
+  .mixin();
+  &:extend(.foo);
+}
+.@{sel}{width:10px}
+
+[expect]
+@primary: #1e90ff;
+.box {
+  color: @primary;
+  .mixin();
+  &:extend(.foo);
+}
+.@{sel} {
+  width: 10px;
+}
+
+== should format guards ==
+.m when (@a > 1) { color: red; }
+
+[expect]
+.m when (@a > 1) {
+  color: red;
+}

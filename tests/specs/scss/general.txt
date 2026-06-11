@@ -1,0 +1,39 @@
+== should format scss constructs ==
+$primary:   #333;
+.btn {
+  color: $primary;
+  &:hover{color:lighten($primary,10%)}
+  // line comment
+  .icon-#{$name}{width:10px}
+}
+
+[expect]
+$primary: #333;
+.btn {
+  color: $primary;
+  &:hover {
+    color: lighten($primary, 10%);
+  }
+  // line comment
+  .icon-#{$name} {
+    width: 10px;
+  }
+}
+
+== should format mixins ==
+@mixin foo($a,$b: 10px){margin:$a $b}
+.box{@include foo(1px);}
+
+[expect]
+@mixin foo($a, $b: 10px) {
+  margin: $a $b;
+}
+.box {
+  @include foo(1px);
+}
+
+== should keep scss maps ==
+$breakpoints: (small: 576px, medium: 768px);
+
+[expect]
+$breakpoints: (small: 576px, medium: 768px);
