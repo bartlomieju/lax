@@ -1,0 +1,17 @@
+~~ keywordCase: upper ~~
+== should uppercase keywords only ==
+select a, count(*) as total, "select" from my_table where left = 1 group by a order by total desc;
+
+[expect]
+SELECT a, count(*) AS total, "select"
+FROM my_table
+WHERE LEFT = 1
+GROUP BY a
+ORDER BY total DESC;
+
+== should leave string contents alone ==
+select 'select from where' from t;
+
+[expect]
+SELECT 'select from where'
+FROM t;

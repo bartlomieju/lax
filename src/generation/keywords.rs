@@ -1,0 +1,147 @@
+/// Words that start a new top level clause line in a statement.
+pub const CLAUSE_STARTERS: &[&str] = &[
+  "alter",
+  "create",
+  "delete",
+  "drop",
+  "except",
+  "from",
+  "group",
+  "having",
+  "insert",
+  "intersect",
+  "join",
+  "limit",
+  "offset",
+  "order",
+  "returning",
+  "select",
+  "set",
+  "union",
+  "update",
+  "values",
+  "where",
+  "window",
+  "with",
+];
+
+/// Words that start a clause only when they lead into a `JOIN`.
+pub const JOIN_PREFIXES: &[&str] = &["cross", "full", "inner", "lateral", "left", "natural", "outer", "right"];
+
+/// Reserved and near universal SQL keywords, used only for the optional
+/// keyword case transform. Quoted identifiers and function names are never
+/// part of this list by construction, since they are different token kinds.
+pub const KEYWORDS: &[&str] = &[
+  "add",
+  "all",
+  "alter",
+  "and",
+  "as",
+  "asc",
+  "begin",
+  "between",
+  "by",
+  "cascade",
+  "case",
+  "check",
+  "column",
+  "commit",
+  "constraint",
+  "create",
+  "cross",
+  "current_date",
+  "current_time",
+  "current_timestamp",
+  "database",
+  "default",
+  "delete",
+  "desc",
+  "distinct",
+  "drop",
+  "else",
+  "end",
+  "escape",
+  "except",
+  "exists",
+  "false",
+  "fetch",
+  "filter",
+  "first",
+  "for",
+  "foreign",
+  "from",
+  "full",
+  "group",
+  "having",
+  "if",
+  "ilike",
+  "in",
+  "index",
+  "inner",
+  "insert",
+  "intersect",
+  "into",
+  "is",
+  "join",
+  "key",
+  "last",
+  "lateral",
+  "left",
+  "like",
+  "limit",
+  "natural",
+  "not",
+  "null",
+  "nulls",
+  "offset",
+  "on",
+  "only",
+  "or",
+  "order",
+  "outer",
+  "over",
+  "partition",
+  "primary",
+  "recursive",
+  "references",
+  "rename",
+  "returning",
+  "right",
+  "rollback",
+  "row",
+  "rows",
+  "select",
+  "set",
+  "table",
+  "then",
+  "to",
+  "transaction",
+  "true",
+  "truncate",
+  "union",
+  "unique",
+  "update",
+  "using",
+  "values",
+  "view",
+  "when",
+  "where",
+  "window",
+  "with",
+];
+
+pub fn is_clause_starter(word: &str) -> bool {
+  contains_ignore_case(CLAUSE_STARTERS, word)
+}
+
+pub fn is_join_prefix(word: &str) -> bool {
+  contains_ignore_case(JOIN_PREFIXES, word)
+}
+
+pub fn is_keyword(word: &str) -> bool {
+  contains_ignore_case(KEYWORDS, word)
+}
+
+fn contains_ignore_case(list: &[&str], word: &str) -> bool {
+  list.iter().any(|k| k.eq_ignore_ascii_case(word))
+}

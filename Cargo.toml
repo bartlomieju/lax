@@ -1,0 +1,33 @@
+[package]
+name = "lax-sql"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/bartlomieju/lax-sql"
+description = "Lax SQL formatter that never reinterprets your code. Dialect agnostic by construction. Usable as a library or a dprint plugin."
+
+exclude = ["tests/", ".github/", "examples/"]
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+debug-assertions = false
+overflow-checks = false
+panic = "abort"
+
+[features]
+wasm = ["serde_json", "dprint-core/wasm"]
+
+[dependencies]
+anyhow = "1"
+dprint-core = { version = "0.67.4", features = ["formatting"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", optional = true }
+
+[dev-dependencies]
+dprint-development = "0.10.2"
+serde_json = "1"
