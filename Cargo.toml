@@ -6,6 +6,8 @@ license = "MIT"
 repository = "https://github.com/bartlomieju/dprint-plugin-css"
 description = "Lenient CSS, SCSS, and Less formatter for dprint."
 
+exclude = ["tests/", ".github/", "examples/"]
+
 [lib]
 crate-type = ["lib", "cdylib"]
 
