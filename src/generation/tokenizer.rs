@@ -34,8 +34,9 @@ pub struct Token<'a> {
 
 pub fn tokenize(text: &str) -> Vec<Token<'_>> {
   let bytes = text.as_bytes();
-  let mut tokens = Vec::new();
+  let mut tokens: Vec<Token> = Vec::new();
   let mut i = 0;
+  let mut line_has_content = false;
   while i < bytes.len() {
     let start = i;
     let b = bytes[i];
@@ -48,7 +49,19 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
         i += 1;
       }
       TokenKind::Whitespace { newlines }
-    } else if b == b'-' && peek(bytes, i + 1) == Some(b'-') {
+    } else if (b == b'-' && peek(bytes, i + 1) == Some(b'-'))
+      || (b == b'#'
+        && is_hash_comment(
+          bytes,
+          i,
+          line_has_content,
+          tokens
+            .iter()
+            .rev()
+            .find(|t| !matches!(t.kind, TokenKind::Whitespace { .. }))
+            .is_some_and(|t| t.kind == TokenKind::Semicolon),
+        ))
+    {
       while i < bytes.len() && bytes[i] != b'\n' {
         i += 1;
       }
@@ -57,7 +70,11 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
       i = scan_block_comment(bytes, i + 2);
       TokenKind::BlockComment
     } else if b == b'\'' {
-      i = scan_string(bytes, i + 1);
+      // a string directly prefixed with E uses backslash escapes
+      let backslash_escapes = tokens
+        .last()
+        .is_some_and(|t| t.kind == TokenKind::Word && t.text.eq_ignore_ascii_case("e"));
+      i = scan_string(bytes, i + 1, backslash_escapes);
       TokenKind::Str
     } else if b == b'"' || b == b'`' {
       i = scan_quoted_ident(bytes, i + 1, b);
@@ -95,12 +112,35 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
         _ => TokenKind::Delim,
       }
     };
+    if let TokenKind::Whitespace { newlines } = kind {
+      if newlines > 0 {
+        line_has_content = false;
+      }
+    } else {
+      line_has_content = true;
+    }
     tokens.push(Token {
       kind,
       text: &text[start..i],
     });
   }
   tokens
+}
+
+/// `#` starts a MySQL style line comment at the start of a line, or mid line
+/// when followed by whitespace. T-SQL temporary tables like `#temp` and
+/// tight PostgreSQL operators like `#>` stay ordinary tokens. A spaced
+/// PostgreSQL `#` operator gets the rest of its line swallowed into a
+/// comment token, which passes through verbatim.
+fn is_hash_comment(bytes: &[u8], i: usize, line_has_content: bool, after_semicolon: bool) -> bool {
+  // a temp table reference can never directly follow a semicolon
+  if !line_has_content || after_semicolon {
+    return true;
+  }
+  match peek(bytes, i + 1) {
+    None => true,
+    Some(next) => is_whitespace(next),
+  }
 }
 
 fn is_whitespace(b: u8) -> bool {
@@ -158,34 +198,44 @@ fn scan_number(bytes: &[u8], mut i: usize) -> usize {
   i
 }
 
-/// Scans a single quoted string. Both doubled quote (`''`, the standard) and
-/// backslash (`\'`, MySQL) escapes are recognized so that strings from any
-/// dialect keep their boundaries.
-fn scan_string(bytes: &[u8], mut i: usize) -> usize {
+/// Scans a single quoted string with standard SQL semantics: a quote is
+/// escaped by doubling it and a backslash is a literal character. This is
+/// what the standard, PostgreSQL, Oracle, SQLite, and T-SQL do; MySQL
+/// backslash escaped quotes are the one dialect form that can mis-scan, and
+/// MySQL also supports the portable doubled form.
+fn scan_string(bytes: &[u8], mut i: usize, backslash_escapes: bool) -> usize {
   while i < bytes.len() {
-    match bytes[i] {
-      b'\\' => {
-        i += 1;
-        if i < bytes.len() {
-          i += utf8_len(bytes[i]);
-        }
+    if backslash_escapes && bytes[i] == b'\\' {
+      i += 1;
+      if i < bytes.len() {
+        i += utf8_len(bytes[i]);
       }
-      b'\'' => {
-        if peek(bytes, i + 1) == Some(b'\'') {
-          i += 2;
-        } else {
-          return i + 1;
-        }
+    } else if bytes[i] == b'\'' {
+      if peek(bytes, i + 1) == Some(b'\'') {
+        i += 2;
+      } else {
+        return i + 1;
       }
-      _ => i += 1,
+    } else {
+      i += 1;
     }
   }
   i
 }
 
+/// Scans a double quote or backtick quoted region. Doubling escapes the
+/// quote per the standard, and a backslash skips the next character because
+/// Hive, BigQuery, and MySQL use double quoted strings with backslash
+/// escapes; a standard quoted identifier ending in a literal backslash is
+/// pathological by comparison.
 fn scan_quoted_ident(bytes: &[u8], mut i: usize, quote: u8) -> usize {
   while i < bytes.len() {
-    if bytes[i] == quote {
+    if bytes[i] == b'\\' {
+      i += 1;
+      if i < bytes.len() {
+        i += utf8_len(bytes[i]);
+      }
+    } else if bytes[i] == quote {
       if peek(bytes, i + 1) == Some(quote) {
         i += 2;
       } else {

@@ -1,5 +1,6 @@
 use super::keywords::is_clause_starter;
 use super::keywords::is_join_prefix;
+use super::keywords::is_starter_suppressor;
 use super::tokenizer::Token;
 use super::tokenizer::TokenKind;
 
@@ -104,6 +105,8 @@ impl<'b, 'a> Parser<'b, 'a> {
     let mut current: Vec<Token<'a>> = Vec::new();
     let mut depth = 0u32;
     let mut semicolon = false;
+    let mut first_word: Option<&'a str> = None;
+    let mut prev_significant: Option<Token<'a>> = None;
     while let Some(token) = self.tokens.get(self.pos).copied() {
       match token.kind {
         TokenKind::OpenParen | TokenKind::Function => depth += 1,
@@ -116,12 +119,18 @@ impl<'b, 'a> Parser<'b, 'a> {
         TokenKind::Word if depth == 0 && !current.is_empty() => {
           // a clause that is only join prefixes so far, like `left outer`,
           // must not be split again at the following `join`
-          if self.starts_clause(&token) && !only_join_prefixes(&current) {
+          if self.starts_clause(&token, first_word, prev_significant) && !only_join_prefixes(&current) {
             clauses.push(trim_ws(&current));
             current.clear();
           }
         }
         _ => {}
+      }
+      if first_word.is_none() && token.kind == TokenKind::Word {
+        first_word = Some(token.text);
+      }
+      if !matches!(token.kind, TokenKind::Whitespace { .. }) {
+        prev_significant = Some(token);
       }
       current.push(token);
       self.pos += 1;
@@ -135,8 +144,25 @@ impl<'b, 'a> Parser<'b, 'a> {
 
   /// A clause starter begins a new line. A join prefix like `left` only
   /// starts a clause when the upcoming words lead into a `join`, so that a
-  /// column named `left` does not force a line break.
-  fn starts_clause(&self, token: &Token<'a>) -> bool {
+  /// column named `left` does not force a line break. A starter directly
+  /// after `on`, `do`, or a dot is part of another construct, like
+  /// `ON DELETE SET NULL` or a qualified name, and never splits.
+  fn starts_clause(&self, token: &Token<'a>, first_word: Option<&str>, prev_significant: Option<Token<'a>>) -> bool {
+    if let Some(prev) = prev_significant {
+      let suppressed = match prev.kind {
+        TokenKind::Word => is_starter_suppressor(prev.text),
+        TokenKind::Delim => prev.text == ".",
+        _ => false,
+      };
+      if suppressed {
+        return false;
+      }
+    }
+    if token.text.eq_ignore_ascii_case("set") {
+      // `set` is a clause only in an update statement; in
+      // `ALTER COLUMN x SET NOT NULL` and friends it must stay inline
+      return first_word.is_some_and(|w| w.eq_ignore_ascii_case("update"));
+    }
     if is_clause_starter(token.text) {
       return true;
     }

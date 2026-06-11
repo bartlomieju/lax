@@ -1,0 +1,142 @@
+== sqlformat-rs#132 on delete set null stays inline ==
+CREATE TABLE t (
+  c1 INT REFERENCES r (id) ON DELETE SET NULL,
+  c2 TEXT
+);
+
+[expect]
+CREATE TABLE t (
+  c1 INT REFERENCES r (id) ON DELETE SET NULL,
+  c2 TEXT
+);
+
+== sqlformat-rs#27 references on update stays inline ==
+CREATE TABLE a (b integer references c (id) on update restrict, other integer);
+
+[expect]
+CREATE TABLE a (b integer references c (id) on update restrict, other integer);
+
+== sqlformat-rs#131 alter table set not null stays inline ==
+ALTER TABLE "public"."foo_table" DROP COLUMN "id", ALTER COLUMN "role_id" SET NOT NULL;
+ALTER TABLE r ALTER COLUMN "catalog_number" DROP NOT NULL;
+
+[expect]
+ALTER TABLE "public"."foo_table" DROP COLUMN "id", ALTER COLUMN "role_id" SET NOT NULL;
+ALTER TABLE r ALTER COLUMN "catalog_number" DROP NOT NULL;
+
+== update set still splits ==
+update t set x = 1, y = 2 where id = 3;
+
+[expect]
+update t
+set x = 1, y = 2
+where id = 3;
+
+== sqlformat-rs#130 drop table with following comment ==
+DROP TABLE IF EXISTS "public"."some_table";
+
+-- some comments
+
+[expect]
+DROP TABLE IF EXISTS "public"."some_table";
+
+-- some comments
+
+== sqlformat-rs#85 double at sign is not split ==
+select @@SESSION.sql_log_bin;
+
+[expect]
+select @@SESSION.sql_log_bin;
+
+== sqlformat-rs#69 glob strings are untouched ==
+SELECT trackid FROM tracks WHERE name GLOB '*[^1-9]*';
+
+[expect]
+SELECT trackid
+FROM tracks
+WHERE name GLOB '*[^1-9]*';
+
+== sqlformat-rs#65 and #61 cast operator is not split ==
+SELECT birth_date::date FROM users WHERE created_at > now() - '1 week'::interval;
+
+[expect]
+SELECT birth_date::date
+FROM users
+WHERE created_at > now() - '1 week'::interval;
+
+== sqlformat-rs#52 multi character operators are not split ==
+select a <-> b, c <=> d, e && f, g @> h from t;
+
+[expect]
+select a <-> b, c <=> d, e && f, g @> h
+from t;
+
+== sqlformat-rs#39 and #25 escaped string prefix keeps no space ==
+INSERT INTO "public"."users"("name") VALUES (E'alice');
+SELECT 'new line -> '||E'\n';
+
+[expect]
+INSERT INTO "public"."users"("name")
+VALUES (E'alice');
+SELECT 'new line -> '||E'\n';
+
+== sqlformat-rs#22 scientific notation is not split ==
+select 1e16, 1e+16, 2.5e-3 from t;
+
+[expect]
+select 1e16, 1e+16, 2.5e-3
+from t;
+
+== sqlformat-rs#18 dollar word parameters are not split ==
+SELECT * FROM problem WHERE file_hash = $hash;
+
+[expect]
+SELECT *
+FROM problem
+WHERE file_hash = $hash;
+
+== sqlformat-rs#12 huge numeric placeholder does not panic ==
+?62666666121266666612
+
+[expect]
+?62666666121266666612
+
+== sqlformat-rs#7 leading whitespace with multibyte string ==
+
+SELECT 'main';
+
+[expect]
+SELECT 'main';
+
+== sqlformat-rs#20 dollar quoted function body is opaque ==
+CREATE OR REPLACE FUNCTION generate_ulid() RETURNS uuid
+    AS $$
+        SELECT (lpad(to_hex(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint), 12, '0'))::uuid;
+    $$ LANGUAGE SQL;
+
+[expect]
+CREATE OR REPLACE FUNCTION generate_ulid() RETURNS uuid
+  AS $$
+        SELECT (lpad(to_hex(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint), 12, '0'))::uuid;
+    $$ LANGUAGE SQL;
+
+== sqlformat-rs#17 between and stays inline ==
+SELECT distance BETWEEN 0 AND 20 AS is_proximate FROM employees;
+
+[expect]
+SELECT distance BETWEEN 0 AND 20 AS is_proximate
+FROM employees;
+
+== sqlformat-rs#129 on conflict do nothing keeps its semicolon ==
+INSERT INTO t (a) VALUES (1) ON CONFLICT DO NOTHING;
+
+[expect]
+INSERT INTO t (a)
+VALUES (1) ON CONFLICT DO NOTHING;
+
+== sqlformat-rs#37 upsert do update set stays with on conflict ==
+INSERT INTO users (name, email) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET name = $1;
+
+[expect]
+INSERT INTO users (name, email)
+VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET name = $1;

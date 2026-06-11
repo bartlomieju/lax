@@ -138,6 +138,14 @@ fn gen_clause(tokens: &[Token], items: &mut PrintItems, ctx: &Context) {
           // the dedent applies to the closing paren line only
           set_extra_indent(items, &mut extra_indent, marked.max(1));
         } else {
+          // a space before a closing paren is dropped, but an author
+          // newline is kept; it may also be load bearing when a line
+          // comment precedes the paren
+          if pending == Pending::Newline {
+            let marked = groups.iter().filter(|m| **m).count();
+            set_extra_indent(items, &mut extra_indent, marked.max(1));
+            items.push_signal(Signal::NewLine);
+          }
           pending = Pending::None;
           items.push_string(token.text.to_string());
         }
@@ -220,7 +228,11 @@ fn push_comment(items: &mut PrintItems, ctx: &Context, token: &Token) {
   let offset = text.as_ptr() as usize - ctx.source.as_ptr() as usize;
   let line_start = ctx.source[..offset].rfind('\n').map(|i| i + 1).unwrap_or(0);
   let original_column = ctx.source[line_start..offset].chars().count();
-  let mut lines = text.split('\n');
+  let mut lines: Vec<&str> = text.split('\n').collect();
+  while lines.len() > 1 && lines.last().is_some_and(|l| l.trim().is_empty()) {
+    lines.pop();
+  }
+  let mut lines = lines.into_iter();
   if let Some(first) = lines.next() {
     push_text_line(items, first.trim_end());
   }

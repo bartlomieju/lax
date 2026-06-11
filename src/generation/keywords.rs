@@ -1,9 +1,12 @@
 /// Words that start a new top level clause line in a statement.
+///
+/// Statement leading words like `create`, `alter`, `drop`, and `delete` are
+/// deliberately absent: they also appear inside constructs like
+/// `ON DELETE SET NULL`, `ALTER COLUMN x DROP NOT NULL`, or
+/// `CREATE OR REPLACE`, where a line break would be wrong, and as the first
+/// word of a statement they never need a break anyway. `set` only starts a
+/// clause in an `update` statement, handled separately.
 pub const CLAUSE_STARTERS: &[&str] = &[
-  "alter",
-  "create",
-  "delete",
-  "drop",
   "except",
   "from",
   "group",
@@ -16,14 +19,17 @@ pub const CLAUSE_STARTERS: &[&str] = &[
   "order",
   "returning",
   "select",
-  "set",
   "union",
-  "update",
   "values",
   "where",
   "window",
   "with",
 ];
+
+/// A clause starter is suppressed when it directly follows one of these
+/// words, which covers `ON UPDATE CASCADE`, `ON DELETE SET NULL`, and
+/// upsert `DO UPDATE SET` style constructs.
+pub const STARTER_SUPPRESSORS: &[&str] = &["do", "on"];
 
 /// Words that start a clause only when they lead into a `JOIN`.
 pub const JOIN_PREFIXES: &[&str] = &["cross", "full", "inner", "lateral", "left", "natural", "outer", "right"];
@@ -132,6 +138,10 @@ pub const KEYWORDS: &[&str] = &[
 
 pub fn is_clause_starter(word: &str) -> bool {
   contains_ignore_case(CLAUSE_STARTERS, word)
+}
+
+pub fn is_starter_suppressor(word: &str) -> bool {
+  contains_ignore_case(STARTER_SUPPRESSORS, word)
 }
 
 pub fn is_join_prefix(word: &str) -> bool {

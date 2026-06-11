@@ -12,9 +12,17 @@ level clause keywords (`select`, `from`, `where`, joins, ...), each clause
 goes on its own line, and everything else is preserved as written.
 
 Because nothing is interpreted, the formatter is dialect agnostic by
-construction: PostgreSQL dollar quoting, MySQL backticks and backslash
-escapes, T-SQL bracket identifiers, and placeholder styles (`?`, `$1`,
-`:name`, `@var`) are all opaque tokens that pass through untouched.
+construction: PostgreSQL dollar quoting and `E'...'` escape strings, MySQL
+backticks and `#` comments, T-SQL bracket identifiers and `#temp` tables,
+and placeholder styles (`?`, `$1`, `:name`, `@var`) are all opaque tokens
+that pass through untouched. The corpus test runs the formatter over the
+sqlfluff dialect fixtures, about 2150 files across 30 dialects.
+
+Two dialect ambiguities are resolved in favor of the standard: a backslash
+inside a regular single quoted string is a literal character (use `''`
+doubling or `E'...'` strings, which both also work in MySQL), and BigQuery
+triple quoted strings are not recognized because they are ambiguous with
+standard quote doubling.
 
 - A line break is never introduced where the author had no whitespace.
 - Author newlines are preserved, so hand formatted statements keep their

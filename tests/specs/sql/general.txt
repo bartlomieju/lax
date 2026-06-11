@@ -95,11 +95,11 @@ select "Select", `from`, [where], count(*) from t;
 select "Select", `from`, [where], count(*)
 from t;
 
-== should preserve escaped quotes in strings ==
-select 'it''s', 'a\'b' from t;
+== should preserve doubled quote escapes in strings ==
+select 'it''s', 'a\b' from t;
 
 [expect]
-select 'it''s', 'a\'b'
+select 'it''s', 'a\b'
 from t;
 
 == should keep statements without semicolons unterminated ==
