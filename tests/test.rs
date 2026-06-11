@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use dprint_core::configuration::*;
 use dprint_development::*;
-use dprint_plugin_css::configuration::resolve_config;
-use dprint_plugin_css::*;
+use lax_css::configuration::resolve_config;
+use lax_css::*;
 
 #[test]
 fn test_specs() {

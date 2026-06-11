@@ -46,10 +46,10 @@ impl SyncPluginHandler<Configuration> for CssPluginHandler {
       config_key: "css".to_string(),
       help_url: "https://github.com/bartlomieju/dprint-plugin-css".to_string(),
       config_schema_url: format!(
-        "https://plugins.dprint.dev/bartlomieju/dprint-plugin-css/{}/schema.json",
+        "https://plugins.dprint.dev/bartlomieju/lax-css/{}/schema.json",
         version
       ),
-      update_url: Some("https://plugins.dprint.dev/bartlomieju/dprint-plugin-css/latest.json".to_string()),
+      update_url: Some("https://plugins.dprint.dev/bartlomieju/lax-css/latest.json".to_string()),
     }
   }
 

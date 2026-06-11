@@ -4,13 +4,13 @@ fn main() {
   let path = std::env::args().nth(1).unwrap();
   let width: u32 = std::env::args().nth(2).unwrap().parse().unwrap();
   let global = dprint_core::configuration::GlobalConfiguration::default();
-  let mut config = dprint_plugin_css::configuration::resolve_config(Default::default(), &global).config;
+  let mut config = lax_css::configuration::resolve_config(Default::default(), &global).config;
   config.line_width = width;
   let text = std::fs::read_to_string(&path).unwrap();
-  let first = dprint_plugin_css::format_text(Path::new(&path), &text, &config)
+  let first = lax_css::format_text(Path::new(&path), &text, &config)
     .unwrap()
     .unwrap_or_else(|| text.clone());
-  match dprint_plugin_css::format_text(Path::new(&path), &first, &config).unwrap() {
+  match lax_css::format_text(Path::new(&path), &first, &config).unwrap() {
     Some(second) if second != first => {
       eprintln!("NOT IDEMPOTENT");
       for (a, b) in first.lines().zip(second.lines()) {

@@ -5,8 +5,8 @@ fn main() {
   let text = std::fs::read_to_string(&path).expect("failed to read file");
   let config_map = dprint_core::configuration::ConfigKeyMap::new();
   let global_config = dprint_core::configuration::GlobalConfiguration::default();
-  let config = dprint_plugin_css::configuration::resolve_config(config_map, &global_config).config;
-  match dprint_plugin_css::format_text(Path::new(&path), &text, &config) {
+  let config = lax_css::configuration::resolve_config(config_map, &global_config).config;
+  match lax_css::format_text(Path::new(&path), &text, &config) {
     Ok(Some(output)) => print!("{}", output),
     Ok(None) => print!("{}", text),
     Err(err) => {

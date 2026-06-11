@@ -26,4 +26,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: plugin
-          path: target/wasm32-unknown-unknown/release/dprint_plugin_css.wasm
+          path: target/wasm32-unknown-unknown/release/lax_css.wasm

@@ -1,10 +1,10 @@
 [package]
-name = "dprint-plugin-css"
+name = "lax-css"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/bartlomieju/dprint-plugin-css"
-description = "Lenient CSS, SCSS, and Less formatter for dprint."
+description = "Lax CSS, SCSS, and Less formatter that never reinterprets your code. Usable as a library or a dprint plugin."
 
 exclude = ["tests/", ".github/", "examples/"]
 

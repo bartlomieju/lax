@@ -3,8 +3,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use dprint_core::configuration::GlobalConfiguration;
-use dprint_plugin_css::configuration::resolve_config;
-use dprint_plugin_css::format_text;
+use lax_css::configuration::resolve_config;
+use lax_css::format_text;
 
 /// Runs every corpus file through the formatter at two line widths and
 /// asserts the three invariants of the lax policy:

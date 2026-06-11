@@ -1,6 +1,7 @@
-# dprint-plugin-css
+# lax-css
 
-Lenient CSS, SCSS, and Less formatter for [dprint](https://dprint.dev).
+Lax CSS, SCSS, and Less formatter, usable as a Rust library or as a
+[dprint](https://dprint.dev) plugin.
 
 ## Philosophy
 
