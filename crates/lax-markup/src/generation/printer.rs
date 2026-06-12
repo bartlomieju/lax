@@ -291,8 +291,12 @@ fn format_embedded(name: &str, attrs: &[super::tokenizer::Attr], children: &[Nod
     (Some(first), Some(last)) => (first.span().0, last.span().1),
     _ => return None,
   };
-  let content = &ctx.source[start..end];
-  match external(lang, content, ctx.line_width) {
+  // hand the content to the external formatter with its common indentation
+  // stripped; the formatted result is reindented to the element's level, so
+  // stripping first makes the round trip a fixed point even when the inner
+  // formatter keeps comment interiors at absolute columns
+  let content = dedent(&ctx.source[start..end]);
+  match external(lang, &content, ctx.line_width) {
     Ok(result) => result,
     Err(error) => {
       ctx.external_error.borrow_mut().get_or_insert(error);
@@ -317,4 +321,37 @@ fn attr_value<'a>(attrs: &[super::tokenizer::Attr<'a>], name: &str) -> Option<&'
     return Some(value);
   }
   None
+}
+
+/// Strips the longest common leading whitespace prefix from every non empty
+/// line.
+fn dedent(text: &str) -> String {
+  let mut common: Option<&str> = None;
+  for line in text.split('\n') {
+    if line.trim().is_empty() {
+      continue;
+    }
+    let leading = &line[..line.len() - line.trim_start().len()];
+    common = Some(match common {
+      None => leading,
+      Some(prev) => {
+        let len = prev
+          .as_bytes()
+          .iter()
+          .zip(leading.as_bytes())
+          .take_while(|(a, b)| a == b)
+          .count();
+        &prev[..len]
+      }
+    });
+  }
+  let common = common.unwrap_or("");
+  if common.is_empty() {
+    return text.to_string();
+  }
+  text
+    .split('\n')
+    .map(|line| line.strip_prefix(common).unwrap_or(line))
+    .collect::<Vec<_>>()
+    .join("\n")
 }
