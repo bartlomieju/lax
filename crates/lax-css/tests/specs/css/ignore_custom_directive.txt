@@ -1,0 +1,14 @@
+~~ ignoreNodeCommentText: deno-fmt-ignore, ignoreFileCommentText: deno-fmt-ignore-file ~~
+== custom directive name is honored and the default is not ==
+/* deno-fmt-ignore */
+a   {  color:red  }
+/* dprint-ignore */
+b   {  color:red  }
+
+[expect]
+/* deno-fmt-ignore */
+a   {  color:red  }
+/* dprint-ignore */
+b {
+  color: red;
+}

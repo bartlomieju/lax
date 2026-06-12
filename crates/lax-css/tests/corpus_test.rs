@@ -1,0 +1,82 @@
+use std::fs;
+use std::path::Path;
+use std::path::PathBuf;
+
+use dprint_core::configuration::GlobalConfiguration;
+use lax_css::configuration::resolve_config;
+use lax_css::format_text;
+
+/// Runs every corpus file through the formatter at two line widths and
+/// asserts the three invariants of the lax policy:
+///
+/// 1. formatting never errors, no matter how broken the input is
+/// 2. formatting is idempotent
+/// 3. everything except whitespace and semicolons survives unchanged
+#[test]
+fn test_corpus() {
+  let global_config = GlobalConfiguration::default();
+  let default_config = resolve_config(Default::default(), &global_config).config;
+  let mut narrow_config = default_config.clone();
+  narrow_config.line_width = 40;
+
+  let mut files = Vec::new();
+  collect_files(Path::new("./tests/corpus"), &mut files);
+  files.sort();
+  assert!(files.len() > 1000, "corpus seems to be missing files");
+
+  let mut failures = Vec::new();
+  for file in &files {
+    // a few corpus files are intentionally not valid utf8; skip those
+    let Ok(text) = fs::read_to_string(file) else {
+      continue;
+    };
+    for (config_name, config) in [("default", &default_config), ("narrow", &narrow_config)] {
+      let first = match format_text(file, &text, config) {
+        Ok(result) => result.unwrap_or_else(|| text.clone()),
+        Err(err) => {
+          failures.push(format!("{} [{}]: error: {}", file.display(), config_name, err));
+          continue;
+        }
+      };
+      match format_text(file, &first, config) {
+        Ok(Some(second)) if second != first => {
+          failures.push(format!("{} [{}]: not idempotent", file.display(), config_name));
+        }
+        Ok(_) => {}
+        Err(err) => {
+          failures.push(format!(
+            "{} [{}]: error on second pass: {}",
+            file.display(),
+            config_name,
+            err
+          ));
+        }
+      }
+      if essential_content(&text) != essential_content(&first) {
+        failures.push(format!("{} [{}]: content changed", file.display(), config_name));
+      }
+    }
+  }
+  if !failures.is_empty() {
+    panic!("{} corpus failures:\n{}", failures.len(), failures.join("\n"));
+  }
+}
+
+fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {
+  for entry in fs::read_dir(dir).unwrap() {
+    let path = entry.unwrap().path();
+    if path.is_dir() {
+      collect_files(&path, files);
+    } else if matches!(path.extension().and_then(|e| e.to_str()), Some("css" | "scss" | "less")) {
+      files.push(path);
+    }
+  }
+}
+
+/// Everything except whitespace and semicolons must survive formatting.
+fn essential_content(text: &str) -> String {
+  text
+    .chars()
+    .filter(|c| !c.is_whitespace() && *c != ';' && *c != '\u{feff}')
+    .collect()
+}

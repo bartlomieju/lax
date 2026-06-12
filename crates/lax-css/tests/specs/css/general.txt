@@ -1,0 +1,157 @@
+== should format a basic rule ==
+a{color:red;background:blue}
+
+[expect]
+a {
+  color: red;
+  background: blue;
+}
+
+== should preserve property casing in unknown at rules ==
+@plugin "daisyui/theme" {
+	name: "dark";
+	prefersDark: true;
+}
+
+[expect]
+@plugin "daisyui/theme" {
+  name: "dark";
+  prefersDark: true;
+}
+
+== should format nested at rules ==
+@media screen and (min-width:600px){a{color:red}}
+
+[expect]
+@media screen and (min-width:600px) {
+  a {
+    color: red;
+  }
+}
+
+== should put each selector on its own line ==
+a,b.foo>c{color:red}
+
+[expect]
+a,
+b.foo>c {
+  color: red;
+}
+
+== should preserve comments ==
+/* header */
+a {
+  color: red; /* trailing */
+  /* own line */
+  margin: 0;
+}
+
+[expect]
+/* header */
+a {
+  color: red; /* trailing */
+  /* own line */
+  margin: 0;
+}
+
+== should collapse multiple blank lines into one ==
+a {
+  color: red;
+
+
+
+  margin: 0;
+}
+
+
+
+b {
+  color: blue;
+}
+
+[expect]
+a {
+  color: red;
+
+  margin: 0;
+}
+
+b {
+  color: blue;
+}
+
+== should preserve custom property values verbatim ==
+:root {
+  --shadow:   0 1px   2px;
+  --case-Sensitive: SomeValue;
+}
+
+[expect]
+:root {
+  --shadow: 0 1px   2px;
+  --case-Sensitive: SomeValue;
+}
+
+== should trim paren edges and never add comma spacing ==
+a { transform: translate( 1px ,2px ); }
+
+[expect]
+a {
+  transform: translate(1px,2px);
+}
+
+== should keep comma spacing the author wrote ==
+a { font-family: Arial, sans-serif; }
+
+[expect]
+a {
+  font-family: Arial, sans-serif;
+}
+
+== should handle at rules without blocks ==
+@import url(./foo.css);
+@charset "utf-8";
+
+[expect]
+@import url(./foo.css);
+@charset "utf-8";
+
+== should handle empty blocks ==
+a{}
+
+[expect]
+a {
+}
+
+== should preserve string contents ==
+a { content: "  Hello  World  "; background: url("./a b.png"); }
+
+[expect]
+a {
+  content: "  Hello  World  ";
+  background: url("./a b.png");
+}
+
+== should handle important ==
+a { color: red !important; }
+
+[expect]
+a {
+  color: red !important;
+}
+
+== should realign multi line comment interiors with their statement ==
+    /* 
+        CSS 
+    */
+    body {
+        font-family: 'Arial', sans-serif;
+    }
+
+[expect]
+/*
+    CSS
+*/
+body {
+  font-family: 'Arial', sans-serif;
+}

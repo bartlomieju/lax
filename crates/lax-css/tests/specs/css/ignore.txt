@@ -1,0 +1,59 @@
+== ignore comment keeps the next statement verbatim ==
+/* dprint-ignore */
+a   {  color:red;background:blue   }
+b { color   : blue }
+
+[expect]
+/* dprint-ignore */
+a   {  color:red;background:blue   }
+b {
+  color: blue;
+}
+
+== ignore comment works inside a block ==
+a {
+  /* dprint-ignore */
+  grid-template:  "a   b"
+                  "c   d";
+  margin:0;
+}
+
+[expect]
+a {
+  /* dprint-ignore */
+  grid-template:  "a   b"
+                  "c   d";
+  margin: 0;
+}
+
+== line comment can also ignore ==
+// dprint-ignore
+a   {  color:red  }
+
+[expect]
+// dprint-ignore
+a   {  color:red  }
+
+== ignore file comment leaves everything untouched ==
+/* dprint-ignore-file */
+a   {  color:red;background:blue   }
+   b{margin:0}
+
+[expect]
+/* dprint-ignore-file */
+a   {  color:red;background:blue   }
+   b{margin:0}
+
+== ignore file directive in the body does not ignore the next statement ==
+a { color: red; }
+/* dprint-ignore-file */
+b   {  color:red  }
+
+[expect]
+a {
+  color: red;
+}
+/* dprint-ignore-file */
+b {
+  color: red;
+}

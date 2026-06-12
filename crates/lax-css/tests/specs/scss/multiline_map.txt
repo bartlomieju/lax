@@ -1,0 +1,29 @@
+== should keep multi line scss maps multi line ==
+$breakpoints: (
+  small: 576px,
+  medium: 768px,
+);
+
+[expect]
+$breakpoints: (
+  small: 576px,
+  medium: 768px,
+);
+
+== should indent nested multi line maps ==
+$theme: (
+  colors: (
+    primary: #333,
+    secondary: #666,
+  ),
+  spacing: 8px,
+);
+
+[expect]
+$theme: (
+  colors: (
+    primary: #333,
+    secondary: #666,
+  ),
+  spacing: 8px,
+);
