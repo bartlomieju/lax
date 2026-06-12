@@ -274,12 +274,22 @@ fn scan_open_tag(text: &str, start: usize) -> (Event<'_>, usize) {
       }
       _ => {
         let attr_start = i;
-        // attribute name, which may itself be a template expression
+        // attribute name; template expressions can appear as the whole
+        // name or inside it, like data-{{key}}, and a slash is part of
+        // the name unless it ends the tag, so that comments inside a tag
+        // cannot stall the scanner
         if bytes[i] == b'{' {
           i = scan_balanced_braces(bytes, i);
         } else {
-          while i < bytes.len() && !bytes[i].is_ascii_whitespace() && !matches!(bytes[i], b'=' | b'>' | b'/') {
-            i += 1;
+          while i < bytes.len() && !bytes[i].is_ascii_whitespace() && !matches!(bytes[i], b'=' | b'>') {
+            if bytes[i] == b'/' && bytes.get(i + 1) == Some(&b'>') {
+              break;
+            }
+            if bytes[i] == b'{' {
+              i = scan_balanced_braces(bytes, i);
+            } else {
+              i += 1;
+            }
           }
         }
         // optional value
@@ -311,6 +321,11 @@ fn scan_open_tag(text: &str, start: usize) -> (Event<'_>, usize) {
               i = j;
             }
           }
+        }
+        if i == attr_start {
+          // never loop without progress, no matter how broken the tag is
+          i += 1;
+          continue;
         }
         attrs.push(Attr {
           text: &text[attr_start..i],

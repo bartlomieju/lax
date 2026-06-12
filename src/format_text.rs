@@ -12,8 +12,7 @@ use crate::generation;
 /// attribute value, or `css`/`js` by element kind), the raw inner text, and
 /// the remaining print width. Returning `Ok(None)` keeps the contents
 /// verbatim.
-pub type ExternalFormatter<'a> =
-  dyn Fn(&str, &str, u32) -> Result<Option<String>> + 'a;
+pub type ExternalFormatter<'a> = dyn Fn(&str, &str, u32) -> Result<Option<String>> + 'a;
 
 pub fn format_text(_path: &Path, text: &str, config: &Configuration) -> Result<Option<String>> {
   let result = format_text_inner(text, config, None)?;
@@ -30,11 +29,7 @@ pub fn format_text_with_external(
   if result == text { Ok(None) } else { Ok(Some(result)) }
 }
 
-fn format_text_inner(
-  text: &str,
-  config: &Configuration,
-  external: Option<&ExternalFormatter>,
-) -> Result<String> {
+fn format_text_inner(text: &str, config: &Configuration, external: Option<&ExternalFormatter>) -> Result<String> {
   let text = text.strip_prefix('\u{FEFF}').unwrap_or(text);
   let events = generation::tokenize(text);
   if has_ignore_file_comment(&events, &config.ignore_file_comment_text) {

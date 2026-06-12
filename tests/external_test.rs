@@ -11,9 +11,7 @@ fn config() -> lax_markup::configuration::Configuration {
 #[test]
 fn formats_embedded_blocks() {
   let input = "<html>\n<head>\n<style lang=\"scss\">\n.a{color:red}\n</style>\n<script type=\"module\">\nconst x=1\n</script>\n</head>\n</html>\n";
-  let external = |lang: &str, text: &str, _width: u32| {
-    Ok(Some(format!("/* {} */\n{}", lang, text.trim())))
-  };
+  let external = |lang: &str, text: &str, _width: u32| Ok(Some(format!("/* {} */\n{}", lang, text.trim())));
   let result = format_text_with_external(Path::new("a.html"), input, &config(), &external)
     .unwrap()
     .unwrap();
@@ -26,10 +24,7 @@ fn external_decline_keeps_contents_verbatim() {
   let input = "<div>\n<style>\n  .a{}\n</style>\n</div>\n";
   let external = |_: &str, _: &str, _: u32| Ok(None);
   let result = format_text_with_external(Path::new("a.html"), input, &config(), &external).unwrap();
-  assert_eq!(
-    result.unwrap(),
-    "<div>\n  <style>\n  .a{}\n</style>\n</div>\n"
-  );
+  assert_eq!(result.unwrap(), "<div>\n  <style>\n  .a{}\n</style>\n</div>\n");
 }
 
 #[test]

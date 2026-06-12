@@ -49,7 +49,7 @@ pub fn generate(
     external,
     external_error,
   };
-  if can_restructure(nodes, false) {
+  if can_restructure(nodes, false, true) {
     gen_structural_children(nodes, &mut items, &ctx);
     items.push_signal(Signal::NewLine);
   } else {
@@ -77,7 +77,10 @@ fn is_block_node(node: &Node) -> bool {
 /// where the author already had a line break is always safe to renormalize.
 /// A gap with no line break is only safe when both of its sides are block
 /// level, where whitespace does not render at all. Text pins everything.
-fn can_restructure(children: &[Node], parent_inline: bool) -> bool {
+///
+/// At the document root there are no enclosing tags, so nothing is ever
+/// written into the edge gaps and they are always safe.
+fn can_restructure(children: &[Node], parent_inline: bool, root: bool) -> bool {
   if children
     .iter()
     .any(|c| matches!(c, Node::Text { .. } | Node::RawText { .. }))
@@ -85,7 +88,7 @@ fn can_restructure(children: &[Node], parent_inline: bool) -> bool {
     return false;
   }
   let mut prev_side_block = !parent_inline;
-  let mut gap_has_newline = false;
+  let mut gap_has_newline = root;
   for child in children {
     if let Node::Whitespace { newlines, .. } = child {
       if *newlines > 0 {
@@ -100,7 +103,7 @@ fn can_restructure(children: &[Node], parent_inline: bool) -> bool {
     gap_has_newline = false;
     prev_side_block = is_block_node(child);
   }
-  gap_has_newline || (prev_side_block && !parent_inline)
+  root || gap_has_newline || (prev_side_block && !parent_inline)
 }
 
 fn gen_structural_children(nodes: &[Node], items: &mut PrintItems, ctx: &Context) {
@@ -208,7 +211,7 @@ fn gen_node(node: &Node, items: &mut PrintItems, ctx: &Context) {
           push_text(items, &ctx.source[start..end]);
         }
         // otherwise nothing but whitespace collapses
-      } else if can_restructure(children, parent_inline) {
+      } else if can_restructure(children, parent_inline, false) {
         items.push_signal(Signal::StartIndent);
         items.push_signal(Signal::NewLine);
         gen_structural_children(children, items, ctx);
@@ -271,12 +274,7 @@ fn gen_open_tag(
 /// when there is no external formatter, the element is not embeddable, the
 /// formatter declined, or it failed, in which case the error is recorded
 /// and the contents stay verbatim for this pass.
-fn format_embedded(
-  name: &str,
-  attrs: &[super::tokenizer::Attr],
-  children: &[Node],
-  ctx: &Context,
-) -> Option<String> {
+fn format_embedded(name: &str, attrs: &[super::tokenizer::Attr], children: &[Node], ctx: &Context) -> Option<String> {
   let external = ctx.external?;
   let kind = if name.eq_ignore_ascii_case("style") {
     "css"
