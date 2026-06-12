@@ -1,0 +1,10 @@
+[package]
+name = "lax-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/bartlomieju/lax-core"
+description = "Shared printing machinery for the lax formatter family (lax-css, lax-sql, lax-markup)."
+
+[dependencies]
+dprint-core = { version = "0.67.4", features = ["formatting"] }
