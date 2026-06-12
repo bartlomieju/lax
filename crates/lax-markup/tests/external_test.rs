@@ -47,3 +47,24 @@ fn pre_is_never_sent_to_the_external_formatter() {
   assert!(result.contains("keep   me"));
   assert!(!result.contains("CLOBBERED"));
 }
+
+#[test]
+fn astro_frontmatter_is_formatted_as_typescript() {
+  let input = "  ---\n// foo\n---\n<html></html>\n";
+  let external = |lang: &str, text: &str, _: u32| {
+    assert_eq!(lang, "ts");
+    Ok(Some(format!("{}\n", text.trim())))
+  };
+  let result = format_text_with_external(Path::new("file.astro"), input, &config(), &external)
+    .unwrap()
+    .unwrap();
+  assert_eq!(result, "---\n// foo\n---\n<html></html>\n");
+}
+
+#[test]
+fn astro_without_frontmatter_formats_normally() {
+  let input = "<html>\n<body></body>\n</html>\n";
+  let external = |_: &str, _: &str, _: u32| Ok(None);
+  let result = format_text_with_external(Path::new("file.astro"), input, &config(), &external).unwrap();
+  assert_eq!(result.unwrap(), "<html>\n  <body></body>\n</html>\n");
+}

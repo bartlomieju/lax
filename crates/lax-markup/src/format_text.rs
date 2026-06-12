@@ -20,13 +20,75 @@ pub fn format_text(_path: &Path, text: &str, config: &Configuration) -> Result<O
 }
 
 pub fn format_text_with_external(
-  _path: &Path,
+  path: &Path,
   text: &str,
   config: &Configuration,
   external: &ExternalFormatter,
 ) -> Result<Option<String>> {
+  // Astro files start with a frontmatter block whose body is TypeScript
+  if path.extension().and_then(|e| e.to_str()) == Some("astro")
+    && let Some((frontmatter, rest)) = split_frontmatter(text)
+  {
+    let body = match external("ts", &dedent(frontmatter), config.line_width)? {
+      Some(formatted) => formatted.trim_end().to_string(),
+      None => dedent(frontmatter).trim().to_string(),
+    };
+    let rest_formatted = format_text_inner(rest, config, Some(external))?;
+    let result = format!("---\n{}\n---\n{}", body, rest_formatted);
+    return if result == text { Ok(None) } else { Ok(Some(result)) };
+  }
   let result = format_text_inner(text, config, Some(external))?;
   if result == text { Ok(None) } else { Ok(Some(result)) }
+}
+
+/// Splits a leading `---` fenced frontmatter block, returning its inner text
+/// and the remainder of the file.
+fn split_frontmatter(text: &str) -> Option<(&str, &str)> {
+  let trimmed = text.trim_start();
+  let rest = trimmed.strip_prefix("---")?;
+  let rest = rest.strip_prefix('\n').or_else(|| rest.strip_prefix("\r\n"))?;
+  let mut search_from = 0;
+  loop {
+    let line_end = rest[search_from..].find('\n').map(|i| search_from + i)?;
+    let line = &rest[search_from..line_end];
+    if line.trim_end() == "---" {
+      return Some((&rest[..search_from], &rest[line_end + 1..]));
+    }
+    search_from = line_end + 1;
+  }
+}
+
+/// Strips the longest common leading whitespace prefix from every non empty
+/// line.
+fn dedent(text: &str) -> String {
+  let mut common: Option<&str> = None;
+  for line in text.split('\n') {
+    if line.trim().is_empty() {
+      continue;
+    }
+    let leading = &line[..line.len() - line.trim_start().len()];
+    common = Some(match common {
+      None => leading,
+      Some(prev) => {
+        let len = prev
+          .as_bytes()
+          .iter()
+          .zip(leading.as_bytes())
+          .take_while(|(a, b)| a == b)
+          .count();
+        &prev[..len]
+      }
+    });
+  }
+  let common = common.unwrap_or("");
+  if common.is_empty() {
+    return text.to_string();
+  }
+  text
+    .split('\n')
+    .map(|line| line.strip_prefix(common).unwrap_or(line))
+    .collect::<Vec<_>>()
+    .join("\n")
 }
 
 fn format_text_inner(text: &str, config: &Configuration, external: Option<&ExternalFormatter>) -> Result<String> {
