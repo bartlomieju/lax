@@ -13,7 +13,9 @@ enum Pending {
 /// which of these classes it falls into.
 #[derive(PartialEq, Clone, Copy)]
 pub enum FlowClass {
-  Whitespace { newlines: u32 },
+  Whitespace {
+    newlines: u32,
+  },
   /// An opening paren, bracket, or similar group opener.
   Open,
   /// The matching group closer.
@@ -97,12 +99,16 @@ impl FlowPrinter {
     self.pending = Pending::None;
   }
 
-  pub fn token(
-    &mut self,
-    items: &mut PrintItems,
-    class: FlowClass,
-    emit: impl FnOnce(&mut PrintItems),
-  ) {
+  pub fn token(&mut self, items: &mut PrintItems, class: FlowClass, emit: impl FnOnce(&mut PrintItems)) {
+    // when the first token is preceded by whitespace, the continuation
+    // indent must be in place before that whitespace is flushed, or a width
+    // induced break before the first token lands one level shallower than
+    // the same break does on the next pass, when it is an author newline
+    if !self.first_emitted && self.pending != Pending::None && !matches!(class, FlowClass::Whitespace { .. }) {
+      items.push_signal(Signal::StartIndent);
+      self.extra_indent += 1;
+      self.first_emitted = true;
+    }
     let mut emitted = false;
     match class {
       FlowClass::Whitespace { newlines } => {

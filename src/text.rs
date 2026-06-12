@@ -77,8 +77,7 @@ pub fn push_comment(items: &mut PrintItems, source: &str, comment: &str) {
 /// starts with.
 pub fn contains_directive(text: &str, directive: &str) -> bool {
   text.match_indices(directive).any(|(index, _)| {
-    !text[index + directive.len()..]
-      .starts_with(|c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    !text[index + directive.len()..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_')
   })
 }
 
@@ -92,10 +91,7 @@ pub enum HeaderToken<'a> {
 /// True when a comment in the first comment cluster of the file contains the
 /// ignore file directive. The cluster starts on the first line and ends at
 /// the first blank line or non comment construct.
-pub fn has_ignore_file_comment<'a>(
-  tokens: impl Iterator<Item = HeaderToken<'a>>,
-  directive: &str,
-) -> bool {
+pub fn has_ignore_file_comment<'a>(tokens: impl Iterator<Item = HeaderToken<'a>>, directive: &str) -> bool {
   for (index, token) in tokens.enumerate() {
     match token {
       HeaderToken::Whitespace { newlines } => {
