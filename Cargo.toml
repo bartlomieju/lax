@@ -25,7 +25,7 @@ wasm = ["serde_json", "dprint-core/wasm"]
 [dependencies]
 anyhow = "1"
 dprint-core = { version = "0.67.4", features = ["formatting"] }
-lax-core = "0.1.0"
+lax-core = "0.1.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", optional = true }
 
