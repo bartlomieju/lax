@@ -33,24 +33,15 @@ fn format_text_inner(text: &str, config: &Configuration) -> Result<String> {
   ))
 }
 
-/// True when a comment in the first comment cluster of the file contains the
-/// ignore file directive. The cluster starts on the first line and ends at
-/// the first blank line or non comment construct.
 fn has_ignore_file_comment(tokens: &[generation::Token], directive: &str) -> bool {
-  for (index, token) in tokens.iter().enumerate() {
-    match token.kind {
-      generation::TokenKind::Whitespace { newlines } => {
-        if newlines >= 2 || (index == 0 && newlines >= 1) {
-          return false;
-        }
-      }
+  lax_core::has_ignore_file_comment(
+    tokens.iter().map(|token| match token.kind {
+      generation::TokenKind::Whitespace { newlines } => lax_core::HeaderToken::Whitespace { newlines },
       generation::TokenKind::LineComment | generation::TokenKind::BlockComment => {
-        if token.text.contains(directive) {
-          return true;
-        }
+        lax_core::HeaderToken::Comment(token.text)
       }
-      _ => return false,
-    }
-  }
-  false
+      _ => lax_core::HeaderToken::Other,
+    }),
+    directive,
+  )
 }
