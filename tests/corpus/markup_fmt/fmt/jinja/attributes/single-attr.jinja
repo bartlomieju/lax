@@ -1,0 +1,68 @@
+<tr {% if targeted_fooo and not foo_bar_bar_bar == mykey %} class="collapse"{% endif %}></tr>
+
+<div
+    {% if not line.fields|length_is:'1' %}
+        class="field-box{% if field.field.name %}
+            field-{{ field.field.name }}{% endif %}{% if not field.is_readonly and field.errors %}
+            errors{% endif %}{% if field.field.is_hidden %}
+            hidden{% endif %}"{% elif field.is_checkbox %}
+        class="checkbox-row"
+    {% endif %}
+></div>
+
+<picture
+    {% for key, val in attributes.items %}
+        {{ key }}="{{ val }}"
+    {% endfor %}
+></picture>
+
+<div
+    {% if field.field.causes_red_card %}data-red-card{%
+        elif field.field.causes_yellow_card
+    %}data-yellow-card{% endif %}
+></div>
+
+<div
+    {% if first_condition %}
+        {% if second_condition %}
+            data-second-condition="true"
+        {% endif %}
+    {% endif %}
+>
+</div>
+
+<div
+    {% if first_condition %}
+        {% if second_condition %}
+            data-second-condition="true"
+        {% endif %}
+        data-first-condition="true"
+    {% endif %}
+>
+</div>
+
+# regression test for https://github.com/g-plane/markup_fmt/issues/199
+<div
+    {% if first_condition %}
+        data-first-condition="true"
+        {% if second_condition %}
+            data-second-condition="true"
+        {% endif %}
+    {% endif %}
+>
+</div>
+
+# regression test for https://github.com/g-plane/markup_fmt/issues/198
+<div
+    {% if first_condition %}
+        {% for key, value in my_dict.items %}
+            data-{{key}}="{{value}}"
+        {% endfor %}
+        {% if second_condition %}
+            data-second_condition="true"
+        {% endif %}
+    {% else %}
+        data-else="true"
+    {% endif %}
+>
+</div>

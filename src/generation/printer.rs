@@ -6,9 +6,12 @@ use lax_core::contains_directive;
 use lax_core::push_comment;
 use lax_core::push_text;
 
+use std::cell::RefCell;
+
 use super::parser::Node;
 use super::tokenizer::is_raw_element;
 use crate::configuration::Configuration;
+use crate::format_text::ExternalFormatter;
 
 /// Elements that flow with surrounding text. Whitespace around them renders,
 /// so content containing them is never restructured. Everything not on this
@@ -26,13 +29,25 @@ fn is_inline(name: &str) -> bool {
 struct Context<'a> {
   source: &'a str,
   ignore_directive: &'a str,
+  line_width: u32,
+  external: Option<&'a ExternalFormatter<'a>>,
+  external_error: &'a RefCell<Option<anyhow::Error>>,
 }
 
-pub fn generate(nodes: &[Node], source: &str, config: &Configuration) -> PrintItems {
+pub fn generate(
+  nodes: &[Node],
+  source: &str,
+  config: &Configuration,
+  external: Option<&ExternalFormatter>,
+  external_error: &RefCell<Option<anyhow::Error>>,
+) -> PrintItems {
   let mut items = PrintItems::new();
   let ctx = Context {
     source,
     ignore_directive: &config.ignore_node_comment_text,
+    line_width: config.line_width,
+    external,
+    external_error,
   };
   if can_restructure(nodes, false) {
     gen_structural_children(nodes, &mut items, &ctx);
@@ -150,6 +165,25 @@ fn gen_node(node: &Node, items: &mut PrintItems, ctx: &Context) {
       }
       let parent_inline = is_inline(name);
       if is_raw_element(name) {
+        if let Some(formatted) = format_embedded(name, attrs, children, ctx) {
+          if formatted.trim().is_empty() {
+            if *closed {
+              items.push_string(format!("</{}>", name));
+            }
+            return;
+          }
+          items.push_signal(Signal::StartIndent);
+          for line in formatted.trim_end().split('\n') {
+            items.push_signal(Signal::NewLine);
+            lax_core::push_text_line(items, line.trim_end_matches('\r'));
+          }
+          items.push_signal(Signal::FinishIndent);
+          if *closed {
+            items.push_signal(Signal::NewLine);
+            items.push_string(format!("</{}>", name));
+          }
+          return;
+        }
         // raw contents are preserved byte for byte, together with the close
         // tag, so that no whitespace is ever inserted before it; whitespace
         // before `</pre>` would render
@@ -231,4 +265,57 @@ fn gen_open_tag(
   } else {
     items.push_string(">".to_string());
   }
+}
+
+/// Runs the external formatter over a script or style body. Returns None
+/// when there is no external formatter, the element is not embeddable, the
+/// formatter declined, or it failed, in which case the error is recorded
+/// and the contents stay verbatim for this pass.
+fn format_embedded(
+  name: &str,
+  attrs: &[super::tokenizer::Attr],
+  children: &[Node],
+  ctx: &Context,
+) -> Option<String> {
+  let external = ctx.external?;
+  let kind = if name.eq_ignore_ascii_case("style") {
+    "css"
+  } else if name.eq_ignore_ascii_case("script") {
+    "js"
+  } else {
+    return None;
+  };
+  let lang = attr_value(attrs, "lang")
+    .or_else(|| attr_value(attrs, "type"))
+    .unwrap_or(kind);
+  let (start, end) = match (children.first(), children.last()) {
+    (Some(first), Some(last)) => (first.span().0, last.span().1),
+    _ => return None,
+  };
+  let content = &ctx.source[start..end];
+  match external(lang, content, ctx.line_width) {
+    Ok(result) => result,
+    Err(error) => {
+      ctx.external_error.borrow_mut().get_or_insert(error);
+      None
+    }
+  }
+}
+
+fn attr_value<'a>(attrs: &[super::tokenizer::Attr<'a>], name: &str) -> Option<&'a str> {
+  for attr in attrs {
+    let text = attr.text;
+    let Some(eq) = text.find('=') else { continue };
+    if !text[..eq].trim().eq_ignore_ascii_case(name) {
+      continue;
+    }
+    let value = text[eq + 1..].trim();
+    let value = value
+      .strip_prefix('"')
+      .and_then(|v| v.strip_suffix('"'))
+      .or_else(|| value.strip_prefix('\'').and_then(|v| v.strip_suffix('\'')))
+      .unwrap_or(value);
+    return Some(value);
+  }
+  None
 }

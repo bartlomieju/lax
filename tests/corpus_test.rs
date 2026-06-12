@@ -72,7 +72,10 @@ fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) {
     let path = entry.unwrap().path();
     if path.is_dir() {
       collect_files(&path, files);
-    } else if matches!(path.extension().and_then(|e| e.to_str()), Some("html" | "vue")) {
+    } else if matches!(
+      path.extension().and_then(|e| e.to_str()),
+      Some("html" | "vue" | "svelte" | "astro" | "xml" | "jinja" | "vto" | "mustache")
+    ) {
       files.push(path);
     }
   }

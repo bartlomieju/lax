@@ -1,0 +1,42 @@
+<div>
+{{x}}
+{{ x }}
+{{    x    }}
+</div>
+
+<span>{{ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx }}</span>
+
+<div>{{ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx }}</div>
+
+<div>Hello {{ user.first_name }} {{ user.last_name }}!</div>
+
+<span>Hello {{ user.first_name }} {{ user.last_name }}!</span>
+
+<div>Flat rate for {{ nb_months }} month{{ nb_months|pluralize }}</div>
+
+<div>{{ first_idx }}-{{ last_idx }} of {{ total_count }} lines</div>
+
+<div>
+  Hello {{ user.first_name }} {{ user.last_name }}!
+</div>
+<span>
+  Hello
+  {{ user.first_name }}
+  {{ user.last_name }}!
+</span>
+
+<h{{ heading_level|default:2 }}> Hello </h{{ heading_level|default:2 }}>
+<h{{ heading_level|default:2 }}  > Hello </h{{ heading_level|default:2 }}  >
+<h{{ heading_level|default:2 }}> very-very-very-very-very-very-very-very-very-long-title </h{{ heading_level|default:2 }}>
+
+<h{{ partial_tag_name }}a> Hello </h{{ partial_tag_name }}a>
+<h{{ partial_tag_name }}a  > Hello </h{{ partial_tag_name }}a  >
+<h{{ partial_tag_name }}a> very-very-very-very-very-very-very-very-very-long-title </h{{ partial_tag_name }}a>
+
+<{{ tag_name }}> Hello </{{ tag_name }}>
+<{{ tag_name }}  > Hello </{{ tag_name }}  >
+<{{ tag_name }}> very-very-very-very-very-very-very-very-very-long-title </{{ tag_name }}>
+
+{{- example }}
+{{ example -}}
+{{- example -}}
