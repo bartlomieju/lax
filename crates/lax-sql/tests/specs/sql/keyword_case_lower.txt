@@ -1,0 +1,8 @@
+~~ keywordCase: lower ~~
+== should lowercase keywords only ==
+SELECT a, COUNT(*) AS Total, "FROM" FROM My_Table WHERE x = 1;
+
+[expect]
+select a, COUNT(*) as Total, "FROM"
+from My_Table
+where x = 1;

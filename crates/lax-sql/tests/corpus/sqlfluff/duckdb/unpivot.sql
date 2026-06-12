@@ -1,0 +1,89 @@
+-- Simplified UNPIVOT
+UNPIVOT monthly_sales
+ON jan, feb, mar, apr, may, jun
+INTO
+NAME month
+VALUE sales;
+
+UNPIVOT monthly_sales
+ON COLUMNS (* EXCLUDE (empid, dept))
+INTO
+NAME month
+VALUE sales;
+
+UNPIVOT monthly_sales
+ON (jan, feb, mar) AS q1, (apr, may, jun) AS q2
+INTO
+NAME quarter
+VALUE month_1_sales, month_2_sales, month_3_sales;
+
+WITH unpivot_alias AS (
+    UNPIVOT monthly_sales
+    ON COLUMNS (* EXCLUDE (empid, dept))
+    INTO
+    NAME month
+    VALUE sales
+)
+
+SELECT * FROM unpivot_alias;
+
+-- Simplified UNPIVOT with expressions and default name/value columns
+UNPIVOT
+    (SELECT 42 AS col1, 'woot' AS col2)
+ON
+    (col1 * 2)::VARCHAR,
+    col2;
+
+UNPIVOT monthly_sales
+ON COLUMNS (* EXCLUDE (empid, dept))::float4 AS '\1_\2'
+INTO
+NAME month
+VALUE sales;
+
+-- Standard UNPIVOT
+FROM monthly_sales UNPIVOT (
+    sales
+    FOR month IN (jan, feb, mar, apr, may, jun)
+);
+
+FROM monthly_sales UNPIVOT (
+    sales
+    FOR month IN (COLUMNS (* EXCLUDE (empid, dept)))
+);
+
+FROM monthly_sales
+UNPIVOT (
+    (month_1_sales, month_2_sales, month_3_sales)
+    FOR quarter IN (
+        (jan, feb, mar) AS q1,
+        (apr, may, jun) AS q2
+    )
+);
+
+-- Trailing commas in simplified UNPIVOT
+UNPIVOT monthly_sales
+ON jan, feb, mar, apr, may, jun,
+INTO
+NAME month
+VALUE sales;
+
+UNPIVOT monthly_sales
+ON jan, feb, mar, apr, may, jun,
+INTO
+NAME month
+VALUE month_1_sales, month_2_sales,;
+
+-- Trailing commas in standard UNPIVOT
+SELECT * FROM monthly_sales
+UNPIVOT INCLUDE NULLS (
+    sales FOR month IN (jan, feb, mar,)
+);
+
+FROM monthly_sales
+UNPIVOT (
+    (month_1_sales, month_2_sales, month_3_sales)
+    FOR quarter IN (
+        (jan, feb, mar) AS q1,
+        (apr, may, jun) AS q2,
+    )
+);

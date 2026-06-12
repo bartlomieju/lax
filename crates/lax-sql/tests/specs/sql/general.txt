@@ -1,0 +1,134 @@
+== should put clauses on their own lines ==
+select a,b from t where x=1 and y=2 order by a;
+
+[expect]
+select a,b
+from t
+where x=1 and y=2
+order by a;
+
+== should preserve hand formatted statements ==
+select
+  a,
+  b
+from t
+where x = 1;
+
+[expect]
+select
+  a,
+  b
+from t
+where x = 1;
+
+== should split joins onto their own lines ==
+select * from a left join b on a.id=b.id inner join c on c.id=b.id;
+
+[expect]
+select *
+from a
+left join b on a.id=b.id
+inner join c on c.id=b.id;
+
+== should not break on a column named left ==
+select left, right from t;
+
+[expect]
+select left, right
+from t;
+
+== should keep subqueries inline when written inline ==
+select * from (select a from t) x where exists (select 1 from y);
+
+[expect]
+select *
+from (select a from t) x
+where exists (select 1 from y);
+
+== should preserve multi line paren groups ==
+insert into t (
+  a,
+  b
+)
+values (
+  1,
+  2
+);
+
+[expect]
+insert into t (
+  a,
+  b
+)
+values (
+  1,
+  2
+);
+
+== should not terminate statements inside strings or dollar quotes ==
+select 'a;b', $$x;
+y$$ from t;
+
+[expect]
+select 'a;b', $$x;
+y$$
+from t;
+
+== should preserve comments ==
+-- header
+select a from t; -- trailing
+/* block */
+select b from t;
+
+[expect]
+-- header
+select a
+from t; -- trailing
+/* block */
+select b
+from t;
+
+== should keep quoted identifiers and functions untouched ==
+select "Select", `from`, [where], count(*) from t;
+
+[expect]
+select "Select", `from`, [where], count(*)
+from t;
+
+== should preserve doubled quote escapes in strings ==
+select 'it''s', 'a\b' from t;
+
+[expect]
+select 'it''s', 'a\b'
+from t;
+
+== should keep statements without semicolons unterminated ==
+select a from t
+
+[expect]
+select a
+from t
+
+== ignore comment keeps the next statement verbatim ==
+/* dprint-ignore */
+select    a,    b from t;
+select c from t;
+
+[expect]
+/* dprint-ignore */
+select    a,    b from t;
+select c
+from t;
+
+== ignore file directive only counts in the first comment cluster ==
+-- a header comment
+
+-- dprint-ignore-file
+select    a from t;
+
+[expect]
+-- a header comment
+
+-- dprint-ignore-file
+select a
+from t;
