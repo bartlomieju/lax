@@ -33,19 +33,15 @@ fn format_text_inner(text: &str, config: &Configuration) -> Result<String> {
   ))
 }
 
-/// True when a comment in the file header, before any other construct,
-/// contains the ignore file directive.
 fn has_ignore_file_comment(tokens: &[generation::Token], directive: &str) -> bool {
-  for token in tokens {
-    match token.kind {
-      generation::TokenKind::Whitespace { .. } => {}
+  lax_core::has_ignore_file_comment(
+    tokens.iter().map(|token| match token.kind {
+      generation::TokenKind::Whitespace { newlines } => lax_core::HeaderToken::Whitespace { newlines },
       generation::TokenKind::LineComment | generation::TokenKind::BlockComment => {
-        if token.text.contains(directive) {
-          return true;
-        }
+        lax_core::HeaderToken::Comment(token.text)
       }
-      _ => return false,
-    }
-  }
-  false
+      _ => lax_core::HeaderToken::Other,
+    }),
+    directive,
+  )
 }

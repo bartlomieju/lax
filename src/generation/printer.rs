@@ -1,5 +1,10 @@
 use dprint_core::formatting::PrintItems;
 use dprint_core::formatting::Signal;
+use lax_core::FlowClass;
+use lax_core::FlowPrinter;
+use lax_core::contains_directive;
+use lax_core::push_comment;
+use lax_core::push_text;
 
 use super::parser::Block;
 use super::parser::Statement;
@@ -45,7 +50,7 @@ fn gen_statements(statements: &[Statement], items: &mut PrintItems, ctx: &Contex
     gen_statement(statement, items, ctx);
     if let Some(comment) = statement.trailing_comment {
       items.push_space();
-      push_comment(items, ctx, &comment);
+      push_comment(items, ctx.source, comment.text);
     }
     items.push_signal(Signal::NewLine);
   }
@@ -53,7 +58,7 @@ fn gen_statements(statements: &[Statement], items: &mut PrintItems, ctx: &Contex
 
 fn gen_statement(statement: &Statement, items: &mut PrintItems, ctx: &Context) {
   match &statement.kind {
-    StatementKind::Comment { token } => push_comment(items, ctx, token),
+    StatementKind::Comment { token } => push_comment(items, ctx.source, token.text),
     StatementKind::QualifiedRule { prelude, block } => {
       if !prelude.is_empty() {
         gen_selector(prelude, items);
@@ -216,148 +221,23 @@ fn gen_selector(tokens: &[Token], items: &mut PrintItems) {
   }
 }
 
-#[derive(PartialEq, Clone, Copy)]
-enum Pending {
-  None,
-  Space,
-  Newline,
-}
-
-/// Prints a declaration value, at-rule prelude, or raw statement.
-///
-/// Whitespace handling follows the lax policy:
-/// - a single author space becomes a possible line break point when the line
-///   exceeds the configured width, since changing a space to a newline is a
-///   whitespace only change
-/// - an author newline is preserved as a newline, so hand formatted values
-///   like multi line font stacks or grid-template-areas keep their shape
-/// - a line break is never introduced where the author had no whitespace
-///
-/// Continuation lines are indented one level. A paren or bracket group that
-/// the author opened with a newline indents its contents one level per
-/// nesting depth and puts the closing paren back at the start level.
+/// Prints a declaration value, at-rule prelude, or raw statement through
+/// the shared flow printer, which preserves author newlines, wraps at
+/// author spaces, and indents multi line paren groups per depth.
 fn gen_value(tokens: &[Token], items: &mut PrintItems, starts_on_new_line: bool) {
-  // the continuation indent starts after the first item is written, so that
-  // a value that starts a line, like a raw statement, is not itself indented
-  let mut extra_indent = 0usize;
-  if starts_on_new_line {
-    items.push_signal(Signal::StartIndent);
-    items.push_signal(Signal::NewLine);
-    extra_indent = 1;
-  }
-  let mut pending = Pending::None;
-  let mut after_open = false;
-  let mut first_emitted = starts_on_new_line;
-  // one entry per open paren or bracket; true when the group is multi line
-  let mut groups: Vec<bool> = Vec::new();
+  let mut flow = FlowPrinter::new(items, starts_on_new_line);
   for token in tokens {
-    let mut emitted = false;
-    match token.kind {
-      TokenKind::Whitespace { newlines } => {
-        if after_open {
-          if newlines > 0
-            && let Some(top) = groups.last_mut()
-          {
-            *top = true;
-            let marked = groups.iter().filter(|m| **m).count();
-            set_extra_indent(items, &mut extra_indent, marked.max(1));
-            items.push_signal(Signal::NewLine);
-          }
-          // a space directly after an opening paren is dropped
-          after_open = false;
-        } else if newlines > 0 {
-          pending = Pending::Newline;
-        } else if pending == Pending::None {
-          pending = Pending::Space;
-        }
-      }
-      TokenKind::Comma => {
-        pending = Pending::None;
-        items.push_string(",".to_string());
-        after_open = false;
-        emitted = true;
-      }
-      TokenKind::CloseParen | TokenKind::CloseBracket => {
-        let was_multi_line = groups.pop().unwrap_or(false);
-        if was_multi_line {
-          let marked = groups.iter().filter(|m| **m).count();
-          set_extra_indent(items, &mut extra_indent, marked);
-          items.push_signal(Signal::NewLine);
-          pending = Pending::None;
-          items.push_string(token.text.to_string());
-          // the dedent applies to the closing paren line only; restore the
-          // continuation baseline so later breaks land at a stable level
-          set_extra_indent(items, &mut extra_indent, marked.max(1));
-        } else {
-          // a space before a closing paren is dropped, but an author
-          // newline is kept; it may also be load bearing when a line
-          // comment precedes the paren
-          if pending == Pending::Newline {
-            let marked = groups.iter().filter(|m| **m).count();
-            set_extra_indent(items, &mut extra_indent, marked.max(1));
-            items.push_signal(Signal::NewLine);
-          }
-          pending = Pending::None;
-          items.push_string(token.text.to_string());
-        }
-        after_open = false;
-        emitted = true;
-      }
-      _ => {
-        match pending {
-          Pending::Space => items.push_signal(Signal::SpaceOrNewLine),
-          Pending::Newline => {
-            let marked = groups.iter().filter(|m| **m).count();
-            set_extra_indent(items, &mut extra_indent, marked.max(1));
-            items.push_signal(Signal::NewLine);
-          }
-          Pending::None => {}
-        }
-        pending = Pending::None;
-        push_text(items, token.text);
-        // nothing may share a line with a line comment, or it would be
-        // absorbed into the comment when the output is parsed again
-        if token.kind == TokenKind::LineComment {
-          pending = Pending::Newline;
-        }
-        let is_open = matches!(
-          token.kind,
-          TokenKind::OpenParen | TokenKind::OpenBracket | TokenKind::Function
-        );
-        if is_open {
-          groups.push(false);
-        }
-        after_open = is_open;
-        emitted = true;
-      }
-    }
-    if emitted && !first_emitted {
-      items.push_signal(Signal::StartIndent);
-      extra_indent += 1;
-      first_emitted = true;
-    }
+    let class = match token.kind {
+      TokenKind::Whitespace { newlines } => FlowClass::Whitespace { newlines },
+      TokenKind::Comma => FlowClass::Comma,
+      TokenKind::OpenParen | TokenKind::OpenBracket | TokenKind::Function => FlowClass::Open,
+      TokenKind::CloseParen | TokenKind::CloseBracket => FlowClass::Close,
+      TokenKind::LineComment => FlowClass::LineComment,
+      _ => FlowClass::Other,
+    };
+    flow.token(items, class, |items| push_text(items, token.text));
   }
-  set_extra_indent(items, &mut extra_indent, 0);
-}
-
-/// True when the comment contains the directive as a whole word, so that an
-/// ignore file directive does not also match the plain ignore directive it
-/// starts with.
-fn contains_directive(text: &str, directive: &str) -> bool {
-  text.match_indices(directive).any(|(index, _)| {
-    !text[index + directive.len()..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-  })
-}
-
-fn set_extra_indent(items: &mut PrintItems, current: &mut usize, desired: usize) {
-  while *current < desired {
-    items.push_signal(Signal::StartIndent);
-    *current += 1;
-  }
-  while *current > desired {
-    items.push_signal(Signal::FinishIndent);
-    *current -= 1;
-  }
+  flow.finish(items);
 }
 
 fn ends_with_line_comment(tokens: &[Token]) -> bool {
@@ -371,72 +251,4 @@ fn gen_verbatim(tokens: &[Token], items: &mut PrintItems) {
     text.push_str(token.text);
   }
   push_text(items, &text);
-}
-
-/// Prints a comment, realigning the interior of a multi line comment
-/// relative to the comment's new position. Interior lines keep their
-/// indentation relative to the line the comment started on, instead of
-/// their absolute columns, so a comment stays stable when the statement
-/// around it is reindented, for example by a markup formatter indenting an
-/// embedded style block.
-fn push_comment(items: &mut PrintItems, ctx: &Context, token: &Token) {
-  let text = token.text;
-  if !text.contains('\n') {
-    push_text(items, text);
-    return;
-  }
-  let offset = text.as_ptr() as usize - ctx.source.as_ptr() as usize;
-  let line_start = ctx.source[..offset].rfind('\n').map(|i| i + 1).unwrap_or(0);
-  let original_column = ctx.source[line_start..offset].chars().count();
-  let mut lines = text.split('\n');
-  if let Some(first) = lines.next() {
-    push_text_line(items, first.trim_end());
-  }
-  for line in lines {
-    items.push_signal(Signal::NewLine);
-    let line = line.trim_end();
-    let mut remaining = original_column;
-    let line = line.trim_start_matches(|c: char| {
-      if remaining > 0 && (c == ' ' || c == '\t') {
-        remaining -= 1;
-        true
-      } else {
-        false
-      }
-    });
-    push_text_line(items, line);
-  }
-}
-
-/// Pushes text that may contain newlines or tabs. Lines after the first are
-/// printed verbatim without applying the current indentation level, and tabs
-/// are sent as tab print items because the printer rejects raw tabs.
-fn push_text(items: &mut PrintItems, text: &str) {
-  if !text.contains('\n') {
-    push_text_line(items, text);
-    return;
-  }
-  let mut lines = text.split('\n');
-  if let Some(first) = lines.next() {
-    push_text_line(items, first.trim_end_matches('\r'));
-  }
-  items.push_signal(Signal::StartIgnoringIndent);
-  for line in lines {
-    items.push_signal(Signal::NewLine);
-    push_text_line(items, line.trim_end_matches('\r'));
-  }
-  items.push_signal(Signal::FinishIgnoringIndent);
-}
-
-fn push_text_line(items: &mut PrintItems, line: &str) {
-  let mut first = true;
-  for part in line.split('\t') {
-    if !first {
-      items.push_signal(Signal::Tab);
-    }
-    first = false;
-    if !part.is_empty() {
-      items.push_string(part.to_string());
-    }
-  }
 }
