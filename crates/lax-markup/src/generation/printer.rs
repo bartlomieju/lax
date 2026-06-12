@@ -175,12 +175,13 @@ fn gen_node(node: &Node, items: &mut PrintItems, ctx: &Context) {
             }
             return;
           }
-          items.push_signal(Signal::StartIndent);
+          // script and style contents sit at the same level as their tag,
+          // matching the markup_fmt and dprint default that the Vue and
+          // Svelte ecosystems expect
           for line in formatted.trim_end().split('\n') {
             items.push_signal(Signal::NewLine);
             lax_core::push_text_line(items, line.trim_end_matches('\r'));
           }
-          items.push_signal(Signal::FinishIndent);
           if *closed {
             items.push_signal(Signal::NewLine);
             items.push_string(format!("</{}>", name));

@@ -15,7 +15,7 @@ fn formats_embedded_blocks() {
   let result = format_text_with_external(Path::new("a.html"), input, &config(), &external)
     .unwrap()
     .unwrap();
-  let expected = "<html>\n  <head>\n    <style lang=\"scss\">\n      /* scss */\n      .a{color:red}\n    </style>\n    <script type=\"module\">\n      /* module */\n      const x=1\n    </script>\n  </head>\n</html>\n";
+  let expected = "<html>\n  <head>\n    <style lang=\"scss\">\n    /* scss */\n    .a{color:red}\n    </style>\n    <script type=\"module\">\n    /* module */\n    const x=1\n    </script>\n  </head>\n</html>\n";
   assert_eq!(result, expected);
 }
 

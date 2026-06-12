@@ -47,3 +47,31 @@
     <path d="M0 0h24v24H0z" />
   </g>
 </svg>
+
+== denoland/deno#30823 appstream xml keeps its shape ==
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.sigmasd.recordapps</id>
+  <name>Record Apps</name>
+  <description>
+    <p>
+      Record Apps is a simple application that allows you to record audio.
+      It uses PulseAudio to capture the audio output of each application.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.sigmasd.recordapps.desktop</launchable>
+</component>
+
+[expect]
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.sigmasd.recordapps</id>
+  <name>Record Apps</name>
+  <description>
+    <p>
+      Record Apps is a simple application that allows you to record audio.
+      It uses PulseAudio to capture the audio output of each application.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.sigmasd.recordapps.desktop</launchable>
+</component>
