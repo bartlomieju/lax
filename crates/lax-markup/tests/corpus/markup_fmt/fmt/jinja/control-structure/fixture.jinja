@@ -1,0 +1,84 @@
+{% if true %}
+<span>text</span>
+{% endif %}
+{%if true%}
+<span>text</span>
+{%endif%}
+
+<dl>
+{% for key, value in my_dict | dictsort %}
+        <dt>{{ key|e }}</dt>
+<dd>{{ value|e }}</dd>
+{% endfor %}
+</dl>
+
+<ul>
+{% for user in users %}
+<li>{{ user.username|e }}</li>
+{% else %}
+<li><em>no users found</em></li>
+{% endfor %}
+</ul>
+
+{% if users %}
+<ul>
+{% for user in users %}
+    <li>{{ user.username|e }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if kenny.sick %}
+Kenny is sick.
+{% elif kenny.dead %}
+You killed Kenny! You bastard!!!
+{% else %}
+Kenny looks okay --- so far
+{% endif %}
+
+{% if product.stock > 10 %}
+Available
+{% elseif product.stock > 0 %}
+Only {{ product.stock }} left!
+{% else %}
+Sold-out!
+{% endif %}
+
+{% macro input(name, value='', type='text', size=20) -%}
+    <input type="{{ type }}" name="{{ name }}" value="{{
+        value|e }}" size="{{ size }}">
+{%- endmacro %}
+
+<title>{% block title %}{% endblock %}</title>
+
+{% set reply | wordwrap %}
+    You wrote:
+    {{ message }}
+{% endset %}
+
+{% trans %}Hello, {{ user }}!{% endtrans %}
+{% trans user=user.username %}Hello, {{ user }}!{% endtrans %}
+
+{% trans book_title=book.title, author=author.name %}
+This is {{ book_title }} by {{ author }}
+{% endtrans %}
+
+{% trans count=list|length %}
+There is {{ count }} {{ name }} object.
+{% pluralize %}
+There are {{ count }} {{ name }} objects.
+{% endtrans %}
+
+{% raw %}
+<ul>
+{% for item in seq %}
+    <li>{{ item }}</li>
+{% endfor %}
+</ul>
+{% endraw %}
+
+{% call(user) dump_users(list_of_user) %}
+    <dl>
+        <dt>Realname</dt>
+    </dl>
+{% endcall %}

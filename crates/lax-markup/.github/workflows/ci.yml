@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo clippy --all-features -- -D warnings
+      - name: Test
+        run: cargo test
+      - name: Build wasm plugin
+        run: cargo build --release --features wasm --target wasm32-unknown-unknown
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin
+          path: target/wasm32-unknown-unknown/release/lax_markup.wasm

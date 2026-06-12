@@ -1,0 +1,71 @@
+== should format a vue sfc ==
+<template>
+<div class="app">
+<HelloWorld msg="hi" />
+</div>
+</template>
+
+<script setup>
+import HelloWorld from './HelloWorld.vue'
+</script>
+
+<style scoped>
+.app { color: red; }
+</style>
+
+[expect]
+<template>
+  <div class="app">
+    <HelloWorld msg="hi" />
+  </div>
+</template>
+
+<script setup>
+import HelloWorld from './HelloWorld.vue'
+</script>
+
+<style scoped>
+.app { color: red; }
+</style>
+
+== vue interpolation in text pins its container ==
+<template>
+<td>{{ row.value }}</td>
+</template>
+
+[expect]
+<template>
+  <td>{{ row.value }}</td>
+</template>
+
+== svelte expressions stay verbatim ==
+<script>
+  let count = 0;
+</script>
+
+<button on:click={() => count += 1}>
+clicks: {count}
+</button>
+
+[expect]
+<script>
+  let count = 0;
+</script>
+
+<button on:click={() => count += 1}>
+clicks: {count}
+</button>
+
+== svelte template blocks with comparisons do not break parsing ==
+<div>
+{#if x < y && a > b}
+<span>less</span>
+{/if}
+</div>
+
+[expect]
+<div>
+{#if x < y && a > b}
+<span>less</span>
+{/if}
+</div>

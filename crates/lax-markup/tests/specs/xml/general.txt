@@ -1,0 +1,49 @@
+== should format xml structurally ==
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<item id="1">
+<child/>
+</item>
+</root>
+
+[expect]
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <item id="1">
+    <child />
+  </item>
+</root>
+
+== should leave mixed content xml alone ==
+<note>
+<body>Dear <name>someone</name>, hello</body>
+</note>
+
+[expect]
+<note>
+  <body>Dear <name>someone</name>, hello</body>
+</note>
+
+== should keep cdata verbatim ==
+<root>
+<data><![CDATA[ <not> markup & such ]]></data>
+</root>
+
+[expect]
+<root>
+  <data><![CDATA[ <not> markup & such ]]></data>
+</root>
+
+== should format svg ==
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+<g fill="none">
+<path d="M0 0h24v24H0z"/>
+</g>
+</svg>
+
+[expect]
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <g fill="none">
+    <path d="M0 0h24v24H0z" />
+  </g>
+</svg>

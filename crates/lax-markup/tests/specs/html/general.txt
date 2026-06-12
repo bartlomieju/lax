@@ -1,0 +1,161 @@
+== should reindent structural markup ==
+<!DOCTYPE html>
+<html>
+<body>
+<main>
+<div>
+<section></section>
+</div>
+</main>
+</body>
+</html>
+
+[expect]
+<!DOCTYPE html>
+<html>
+  <body>
+    <main>
+      <div>
+        <section></section>
+      </div>
+    </main>
+  </body>
+</html>
+
+== should never restructure content with text ==
+<div>
+<p>Hello <b>world</b> and more</p>
+</div>
+
+[expect]
+<div>
+  <p>Hello <b>world</b> and more</p>
+</div>
+
+== should keep whitespace between inline elements ==
+<p><b>a</b> <i>b</i></p>
+
+[expect]
+<p><b>a</b> <i>b</i></p>
+
+== should keep pre contents byte for byte ==
+<div>
+<pre>
+  text   with    spaces
+     <code>and tags</code>
+</pre>
+</div>
+
+[expect]
+<div>
+  <pre>
+  text   with    spaces
+     <code>and tags</code>
+</pre>
+</div>
+
+== should keep script and style contents ==
+<html>
+<head>
+<style>
+  .a { color: red; }
+</style>
+<script>
+  const x = 1;
+</script>
+</head>
+</html>
+
+[expect]
+<html>
+  <head>
+    <style>
+  .a { color: red; }
+</style>
+    <script>
+  const x = 1;
+</script>
+  </head>
+</html>
+
+== should preserve blank lines between sections ==
+<main>
+<section>a-block</section>
+
+
+<section>b-block</section>
+</main>
+
+[expect]
+<main>
+  <section>a-block</section>
+
+  <section>b-block</section>
+</main>
+
+== should keep void elements and self closing tags ==
+<div>
+<img src="a.png">
+<br>
+<custom-thing />
+</div>
+
+[expect]
+<div>
+  <img src="a.png">
+  <br>
+  <custom-thing />
+</div>
+
+== should preserve author attribute line breaks ==
+<div
+  class="a"
+  data-x="1"
+>
+<span>ok</span>
+</div>
+
+[expect]
+<div
+  class="a"
+  data-x="1">
+  <span>ok</span>
+</div>
+
+== should keep comments and realign their interiors ==
+<div>
+    <!--
+        a comment
+    -->
+<section></section>
+</div>
+
+[expect]
+<div>
+  <!--
+      a comment
+  -->
+  <section></section>
+</div>
+
+== truncated input stays truncated ==
+<div>
+<section>
+
+[expect]
+<div>
+  <section>
+
+== ignore comment keeps the next element verbatim ==
+<div>
+<!-- dprint-ignore -->
+<section    class="x"   >   </section>
+<section class="y"></section>
+</div>
+
+[expect]
+<div>
+  <!-- dprint-ignore -->
+  <section    class="x"   >   </section>
+  <section class="y"></section>
+</div>
