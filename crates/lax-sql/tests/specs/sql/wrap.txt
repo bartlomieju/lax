@@ -1,0 +1,8 @@
+~~ lineWidth: 40 ~~
+== should wrap a long clause at the width, fill style ==
+select customer_id, first_name, last_name, email from customers;
+
+[expect]
+select customer_id, first_name,
+  last_name, email
+from customers;

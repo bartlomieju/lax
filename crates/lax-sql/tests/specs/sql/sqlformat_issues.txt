@@ -5,10 +5,7 @@ CREATE TABLE t (
 );
 
 [expect]
-CREATE TABLE t (
-  c1 INT REFERENCES r (id) ON DELETE SET NULL,
-  c2 TEXT
-);
+CREATE TABLE t (c1 INT REFERENCES r (id) ON DELETE SET NULL, c2 TEXT);
 
 == sqlformat-rs#27 references on update stays inline ==
 CREATE TABLE a (b integer references c (id) on update restrict, other integer);
@@ -115,8 +112,7 @@ CREATE OR REPLACE FUNCTION generate_ulid() RETURNS uuid
     $$ LANGUAGE SQL;
 
 [expect]
-CREATE OR REPLACE FUNCTION generate_ulid() RETURNS uuid
-  AS $$
+CREATE OR REPLACE FUNCTION generate_ulid() RETURNS uuid AS $$
         SELECT (lpad(to_hex(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint), 12, '0'))::uuid;
     $$ LANGUAGE SQL;
 

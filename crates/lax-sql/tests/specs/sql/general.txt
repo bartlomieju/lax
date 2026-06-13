@@ -1,13 +1,13 @@
 == should put clauses on their own lines ==
-select a,b from t where x=1 and y=2 order by a;
+select a, b from t where x = 1 and y = 2 order by a;
 
 [expect]
-select a,b
+select a, b
 from t
-where x=1 and y=2
+where x = 1 and y = 2
 order by a;
 
-== should preserve hand formatted statements ==
+== should format the same regardless of input line breaks ==
 select
   a,
   b
@@ -15,20 +15,18 @@ from t
 where x = 1;
 
 [expect]
-select
-  a,
-  b
+select a, b
 from t
 where x = 1;
 
 == should split joins onto their own lines ==
-select * from a left join b on a.id=b.id inner join c on c.id=b.id;
+select * from a left join b on a.id = b.id inner join c on c.id = b.id;
 
 [expect]
 select *
 from a
-left join b on a.id=b.id
-inner join c on c.id=b.id;
+left join b on a.id = b.id
+inner join c on c.id = b.id;
 
 == should not break on a column named left ==
 select left, right from t;
@@ -37,7 +35,7 @@ select left, right from t;
 select left, right
 from t;
 
-== should keep subqueries inline when written inline ==
+== should keep subqueries inline ==
 select * from (select a from t) x where exists (select 1 from y);
 
 [expect]
@@ -45,25 +43,15 @@ select *
 from (select a from t) x
 where exists (select 1 from y);
 
-== should preserve multi line paren groups ==
-insert into t (
-  a,
-  b
-)
-values (
-  1,
-  2
-);
+== should canonicalize a messy insert ==
+INSERT
+  into
+  t (a, b)
+values (1, 2);
 
 [expect]
-insert into t (
-  a,
-  b
-)
-values (
-  1,
-  2
-);
+INSERT into t (a, b)
+values (1, 2);
 
 == should not terminate statements inside strings or dollar quotes ==
 select 'a;b', $$x;

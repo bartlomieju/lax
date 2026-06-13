@@ -22,6 +22,9 @@ pub enum FlowClass {
   Close,
   /// A separator that never takes a space before it.
   Comma,
+  /// Like `Comma`, but the next token is forced onto a new line. Used to lay
+  /// out one item per line.
+  CommaBreak,
   /// A comment that runs to the end of the line. Nothing may share a line
   /// with it, or it would be absorbed into the comment on reparse.
   LineComment,
@@ -133,6 +136,14 @@ impl FlowPrinter {
         self.pending = Pending::None;
         emit(items);
         self.after_open = false;
+        emitted = true;
+      }
+      FlowClass::CommaBreak => {
+        self.pending = Pending::None;
+        emit(items);
+        self.after_open = false;
+        // force the next token onto a new line at the continuation indent
+        self.pending = Pending::Newline;
         emitted = true;
       }
       FlowClass::Close => {

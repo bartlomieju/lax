@@ -20,6 +20,17 @@ pub enum KeywordCase {
   Lower,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClauseStyle {
+  /// Each clause goes on its own line; within a clause, items pack until the
+  /// line width and then wrap. The default: compact and deterministic.
+  Fill,
+  /// Each clause keyword goes on its own line and the clause body is indented
+  /// below it, with one comma separated item per line. The classic SQL look.
+  Expanded,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Configuration {
@@ -28,6 +39,7 @@ pub struct Configuration {
   pub indent_width: u8,
   pub new_line_kind: NewLineKind,
   pub keyword_case: KeywordCase,
+  pub clause_style: ClauseStyle,
   pub ignore_node_comment_text: String,
   pub ignore_file_comment_text: String,
 }
@@ -52,6 +64,18 @@ pub fn resolve_config(
         ),
       });
       KeywordCase::Preserve
+    }
+  };
+  let clause_style_text: String = get_value(&mut config, "clauseStyle", "fill".to_string(), &mut diagnostics);
+  let clause_style = match clause_style_text.as_str() {
+    "fill" => ClauseStyle::Fill,
+    "expanded" => ClauseStyle::Expanded,
+    _ => {
+      diagnostics.push(ConfigurationDiagnostic {
+        property_name: "clauseStyle".to_string(),
+        message: format!("expected \"fill\" or \"expanded\", but found \"{}\"", clause_style_text),
+      });
+      ClauseStyle::Fill
     }
   };
   let resolved_config = Configuration {
@@ -88,6 +112,7 @@ pub fn resolve_config(
       &mut diagnostics,
     ),
     keyword_case,
+    clause_style,
     ignore_node_comment_text: get_value(
       &mut config,
       "ignoreNodeCommentText",

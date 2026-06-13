@@ -3,6 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use dprint_core::configuration::GlobalConfiguration;
+use lax_sql::configuration::ClauseStyle;
 use lax_sql::configuration::KeywordCase;
 use lax_sql::configuration::resolve_config;
 use lax_sql::format_text;
@@ -22,6 +23,10 @@ fn test_corpus() {
   narrow_config.line_width = 40;
   let mut upper_config = default_config.clone();
   upper_config.keyword_case = KeywordCase::Upper;
+  let mut expanded_config = default_config.clone();
+  expanded_config.clause_style = ClauseStyle::Expanded;
+  let mut expanded_narrow_config = expanded_config.clone();
+  expanded_narrow_config.line_width = 40;
 
   let mut files = Vec::new();
   collect_files(Path::new("./tests/corpus"), &mut files);
@@ -50,6 +55,8 @@ fn test_corpus() {
       ("default", &default_config),
       ("narrow", &narrow_config),
       ("upper", &upper_config),
+      ("expanded", &expanded_config),
+      ("expanded_narrow", &expanded_narrow_config),
     ] {
       let first = match format_text(file, &text, config) {
         Ok(result) => result.unwrap_or_else(|| text.clone()),

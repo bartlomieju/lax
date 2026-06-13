@@ -36,7 +36,6 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
   let bytes = text.as_bytes();
   let mut tokens: Vec<Token> = Vec::new();
   let mut i = 0;
-  let mut line_has_content = false;
   while i < bytes.len() {
     let start = i;
     let b = bytes[i];
@@ -49,19 +48,7 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
         i += 1;
       }
       TokenKind::Whitespace { newlines }
-    } else if (b == b'-' && peek(bytes, i + 1) == Some(b'-'))
-      || (b == b'#'
-        && is_hash_comment(
-          bytes,
-          i,
-          line_has_content,
-          tokens
-            .iter()
-            .rev()
-            .find(|t| !matches!(t.kind, TokenKind::Whitespace { .. }))
-            .is_some_and(|t| t.kind == TokenKind::Semicolon),
-        ))
-    {
+    } else if (b == b'-' && peek(bytes, i + 1) == Some(b'-')) || (b == b'#' && is_hash_comment(bytes, i)) {
       while i < bytes.len() && bytes[i] != b'\n' {
         i += 1;
       }
@@ -112,13 +99,6 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
         _ => TokenKind::Delim,
       }
     };
-    if let TokenKind::Whitespace { newlines } = kind {
-      if newlines > 0 {
-        line_has_content = false;
-      }
-    } else {
-      line_has_content = true;
-    }
     tokens.push(Token {
       kind,
       text: &text[start..i],
@@ -127,16 +107,17 @@ pub fn tokenize(text: &str) -> Vec<Token<'_>> {
   tokens
 }
 
-/// `#` starts a MySQL style line comment at the start of a line, or mid line
-/// when followed by whitespace. T-SQL temporary tables like `#temp` and
-/// tight PostgreSQL operators like `#>` stay ordinary tokens. A spaced
-/// PostgreSQL `#` operator gets the rest of its line swallowed into a
-/// comment token, which passes through verbatim.
-fn is_hash_comment(bytes: &[u8], i: usize, line_has_content: bool, after_semicolon: bool) -> bool {
-  // a temp table reference can never directly follow a semicolon
-  if !line_has_content || after_semicolon {
-    return true;
-  }
+/// `#` starts a MySQL style line comment when it is followed by whitespace or
+/// ends the input. T-SQL temporary tables like `#temp`, identifiers, and tight
+/// operators like the PostgreSQL `#>` stay ordinary tokens.
+///
+/// This rule is intentionally position independent: a `#` led token means the
+/// same thing whether it is at the start of a line or mid line. Depending on
+/// line position would make formatting non idempotent, since reformatting can
+/// move a `#temp` reference to the start of a line. The cost is that a MySQL
+/// `#comment` with no following space is read as tokens rather than a comment,
+/// which is an irreducible dialect ambiguity.
+fn is_hash_comment(bytes: &[u8], i: usize) -> bool {
   match peek(bytes, i + 1) {
     None => true,
     Some(next) => is_whitespace(next),

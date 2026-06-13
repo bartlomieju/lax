@@ -1,0 +1,43 @@
+~~ clauseStyle: expanded ~~
+== should put each clause body on its own indented line ==
+select a, b from t where x = 1 order by a;
+
+[expect]
+select
+  a,
+  b
+from
+  t
+where
+  x = 1
+order by
+  a;
+
+== should put each value tuple on its own line ==
+insert into t (a, b, c) values (1, 2, 3), (4, 5, 6);
+
+[expect]
+insert into
+  t (a, b, c)
+values
+  (1, 2, 3),
+  (4, 5, 6);
+
+== should keep function arguments inline ==
+select id, count(a, b) from t;
+
+[expect]
+select
+  id,
+  count(a, b)
+from
+  t;
+
+== should keep the leading keyword run together ==
+select distinct a from t;
+
+[expect]
+select distinct
+  a
+from
+  t;
