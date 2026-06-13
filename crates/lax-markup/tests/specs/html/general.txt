@@ -107,11 +107,26 @@
   <custom-thing />
 </div>
 
-== should preserve author attribute line breaks ==
+== should preserve author attribute line breaks, including the close ==
 <div
   class="a"
   data-x="1"
 >
+<span>ok</span>
+</div>
+
+[expect]
+<div
+  class="a"
+  data-x="1"
+>
+  <span>ok</span>
+</div>
+
+== should keep the close bracket attached when the author did ==
+<div
+  class="a"
+  data-x="1">
 <span>ok</span>
 </div>
 

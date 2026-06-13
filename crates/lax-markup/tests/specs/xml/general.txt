@@ -75,3 +75,29 @@
   </description>
   <launchable type="desktop-id">io.github.sigmasd.recordapps.desktop</launchable>
 </component>
+
+== should keep a self closing bracket on its own line when the author did ==
+<svg height="280" width="360">
+  <polygon
+    points="150,15 258,77"
+    style="fill: lime"
+  />
+</svg>
+
+[expect]
+<svg height="280" width="360">
+  <polygon
+    points="150,15 258,77"
+    style="fill: lime"
+  />
+</svg>
+
+== should keep a self closing tag inline when the author did ==
+<svg>
+  <path d="M0 0h24v24H0z" />
+</svg>
+
+[expect]
+<svg>
+  <path d="M0 0h24v24H0z" />
+</svg>

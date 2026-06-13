@@ -225,7 +225,7 @@ dependencies = [
 
 [[package]]
 name = "lax-markup"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "dprint-core",

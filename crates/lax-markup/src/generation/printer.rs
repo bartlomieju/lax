@@ -153,11 +153,20 @@ fn gen_node(node: &Node, items: &mut PrintItems, ctx: &Context) {
       attrs,
       self_closing,
       complete,
+      newlines_before_close,
       children,
       closed,
       span,
     } => {
-      gen_open_tag(name, attrs, *self_closing, *complete, items, ctx);
+      gen_open_tag(
+        name,
+        attrs,
+        *self_closing,
+        *complete,
+        *newlines_before_close,
+        items,
+        ctx,
+      );
       if !*complete
         || *self_closing
         || super::parser::VOID_ELEMENTS
@@ -240,6 +249,7 @@ fn gen_open_tag(
   attrs: &[super::tokenizer::Attr],
   self_closing: bool,
   complete: bool,
+  newlines_before_close: u32,
   items: &mut PrintItems,
   ctx: &Context,
 ) {
@@ -264,7 +274,16 @@ fn gen_open_tag(
     // the file ended inside this tag; nothing is manufactured
     return;
   }
-  if self_closing {
+  // when the author put the closing bracket on its own line, keep it there
+  // at the tag's indent, the same way attribute newlines are preserved
+  if newlines_before_close > 0 {
+    items.push_signal(Signal::NewLine);
+    if self_closing {
+      items.push_string("/>".to_string());
+    } else {
+      items.push_string(">".to_string());
+    }
+  } else if self_closing {
     items.push_string(" />".to_string());
   } else {
     items.push_string(">".to_string());

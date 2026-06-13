@@ -14,6 +14,8 @@ pub enum Node<'a> {
     self_closing: bool,
     /// False when the source ends inside the open tag.
     complete: bool,
+    /// Newlines the author left before the closing `>` or `/>`.
+    newlines_before_close: u32,
     children: Vec<Node<'a>>,
     /// False when the close tag was missing from the source; nothing is
     /// manufactured so truncated input stays stable.
@@ -104,6 +106,7 @@ impl<'a> Parser<'a> {
           attrs,
           self_closing,
           complete,
+          newlines_before_close,
         } => {
           if self_closing || is_void(name) || !complete {
             children.push(Node::Element {
@@ -111,6 +114,7 @@ impl<'a> Parser<'a> {
               attrs,
               self_closing,
               complete,
+              newlines_before_close,
               children: Vec::new(),
               closed: true,
               span: event.span,
@@ -125,6 +129,7 @@ impl<'a> Parser<'a> {
               attrs,
               self_closing: false,
               complete: true,
+              newlines_before_close,
               children: inner,
               closed: close_end.is_some(),
               span: (event.span.0, end),

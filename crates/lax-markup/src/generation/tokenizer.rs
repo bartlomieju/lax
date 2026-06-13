@@ -33,6 +33,8 @@ pub enum EventKind<'a> {
     /// False when the file ends inside the tag, in which case no `>` is
     /// manufactured.
     complete: bool,
+    /// Newlines the author left before the closing `>` or `/>`.
+    newlines_before_close: u32,
   },
   CloseTag {
     name: &'a str,
@@ -250,6 +252,7 @@ fn scan_open_tag(text: &str, start: usize) -> (Event<'_>, usize) {
   let mut i = name_end;
   let mut self_closing = false;
   let mut complete = false;
+  let mut newlines_before_close = 0;
   loop {
     // whitespace before the next attribute or tag end
     let ws_start = i;
@@ -264,12 +267,14 @@ fn scan_open_tag(text: &str, start: usize) -> (Event<'_>, usize) {
       b'>' => {
         i += 1;
         complete = true;
+        newlines_before_close = newlines_before;
         break;
       }
       b'/' if bytes.get(i + 1) == Some(&b'>') => {
         self_closing = true;
         i += 2;
         complete = true;
+        newlines_before_close = newlines_before;
         break;
       }
       _ => {
@@ -341,6 +346,7 @@ fn scan_open_tag(text: &str, start: usize) -> (Event<'_>, usize) {
         attrs,
         self_closing,
         complete,
+        newlines_before_close,
       },
       span: (start, i),
     },
