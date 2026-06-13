@@ -22,6 +22,9 @@ fn format_text_inner(text: &str, config: &Configuration) -> Result<String> {
   if statements.is_empty() {
     return Ok(String::new());
   }
+  if config.single_line {
+    return Ok(generation::generate_inline(&statements, text));
+  }
   Ok(dprint_core::formatting::format(
     || generation::generate(&statements, text, config),
     PrintOptions {

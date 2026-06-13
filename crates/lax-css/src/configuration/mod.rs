@@ -17,6 +17,12 @@ pub struct Configuration {
   pub new_line_kind: NewLineKind,
   pub ignore_node_comment_text: String,
   pub ignore_file_comment_text: String,
+  /// Format the input as a single line of declarations rather than a block.
+  /// Used for inline `style=""` attributes, where line breaks are not
+  /// allowed. Whitespace around colons and between declarations is
+  /// normalized, but no declarations are wrapped or split onto new lines.
+  #[serde(default)]
+  pub single_line: bool,
 }
 
 pub fn resolve_config(
@@ -70,6 +76,7 @@ pub fn resolve_config(
       "dprint-ignore-file".to_string(),
       &mut diagnostics,
     ),
+    single_line: get_value(&mut config, "singleLine", false, &mut diagnostics),
   };
   diagnostics.extend(get_unknown_property_diagnostics(config));
   ResolveConfigurationResult {

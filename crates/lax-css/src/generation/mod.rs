@@ -4,6 +4,7 @@ mod tokenizer;
 
 pub use parser::parse;
 pub use printer::generate;
+pub use printer::generate_inline;
 pub use tokenizer::Token;
 pub use tokenizer::TokenKind;
 pub use tokenizer::tokenize;

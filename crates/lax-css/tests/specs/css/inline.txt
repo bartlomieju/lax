@@ -1,0 +1,24 @@
+~~ singleLine: true ~~
+== should normalize colon and separator whitespace on one line ==
+width : {a + b}PX; height:1PX;
+
+[expect]
+width: {a + b}PX; height: 1PX;
+
+== should not invent a trailing semicolon the author omitted ==
+width: 10px; height:1PX
+
+[expect]
+width: 10px; height: 1PX
+
+== should collapse extra whitespace ==
+  color :   red ;  margin:0
+
+[expect]
+color: red; margin: 0
+
+== should preserve interpolation placeholders verbatim ==
+color: @dpr1nt_0; background: @dpr1nt_1
+
+[expect]
+color: @dpr1nt_0; background: @dpr1nt_1

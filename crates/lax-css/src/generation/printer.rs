@@ -261,6 +261,87 @@ fn ends_with_line_comment(tokens: &[Token]) -> bool {
   tokens.last().is_some_and(|token| token.kind == TokenKind::LineComment)
 }
 
+/// Prints a declaration list on a single line, for inline `style=""`
+/// attributes where newlines are not allowed. Whitespace around colons and
+/// between declarations is normalized to a single space, but nothing is
+/// wrapped, indented, or split. Like the rest of the printer it never
+/// reinterprets or drops tokens; a `;` the author omitted is not invented.
+pub fn generate_inline(statements: &[Statement], source: &str) -> String {
+  let mut parts: Vec<String> = Vec::new();
+  for statement in statements {
+    match &statement.kind {
+      StatementKind::Declaration {
+        name,
+        value,
+        terminated,
+        ..
+      } => {
+        let mut part = collapse_tokens(name);
+        part.push(':');
+        let value = collapse_tokens(value);
+        if !value.is_empty() {
+          part.push(' ');
+          part.push_str(&value);
+        }
+        if *terminated {
+          part.push(';');
+        }
+        if !part.is_empty() {
+          parts.push(part);
+        }
+      }
+      StatementKind::Raw { tokens, semicolon } => {
+        let mut part = collapse_tokens(tokens);
+        if *semicolon {
+          part.push(';');
+        }
+        if !part.is_empty() {
+          parts.push(part);
+        }
+      }
+      // at-rules, qualified rules and comments are unusual inside an inline
+      // style attribute; pass them through verbatim with whitespace collapsed
+      // so unexpected input still round-trips without being mangled.
+      _ => {
+        let part = collapse_whitespace(&source[statement.span.0..statement.span.1]);
+        if !part.is_empty() {
+          parts.push(part);
+        }
+      }
+    }
+  }
+  parts.join(" ")
+}
+
+/// Joins token text, replacing each run of whitespace with a single space and
+/// trimming the ends, without inserting spaces where the source had none.
+fn collapse_tokens(tokens: &[Token]) -> String {
+  let mut out = String::new();
+  let mut pending_space = false;
+  for token in tokens {
+    match token.kind {
+      TokenKind::Whitespace { .. } => {
+        if !out.is_empty() {
+          pending_space = true;
+        }
+      }
+      _ => {
+        if pending_space {
+          out.push(' ');
+          pending_space = false;
+        }
+        out.push_str(token.text);
+      }
+    }
+  }
+  out
+}
+
+/// Collapses every run of whitespace in a string to a single space and trims.
+fn collapse_whitespace(text: &str) -> String {
+  text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 /// Prints tokens exactly as they appeared in the source.
 fn gen_verbatim(tokens: &[Token], items: &mut PrintItems) {
   let mut text = String::new();
