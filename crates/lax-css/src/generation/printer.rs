@@ -200,17 +200,27 @@ fn gen_selector(tokens: &[Token], items: &mut PrintItems) {
           token.kind,
           TokenKind::OpenParen | TokenKind::OpenBracket | TokenKind::Function
         );
+        // a child or sibling combinator at the top level of a selector gets a
+        // single space on each side, however the author spaced it. Like the
+        // space after a declaration colon, this is whitespace normalization,
+        // not token reinterpretation. A `>`, `+`, or `~` nested in parens or
+        // brackets (nth-child(2n+1), [a~=b], :not(a>b)) has depth above zero
+        // and is left untouched.
+        let is_combinator = depth == 0 && token.kind == TokenKind::Delim && matches!(token.text, ">" | "+" | "~");
         if is_open {
           depth += 1;
         }
-        if pending_space {
+        if pending_space || is_combinator {
           items.push_space();
           pending_space = false;
         }
         push_text(items, token.text);
-        // nothing may share a line with a line comment, or it would be
-        // absorbed into the comment when the output is parsed again
-        if token.kind == TokenKind::LineComment {
+        if is_combinator {
+          items.push_space();
+          swallow_ws = true;
+        } else if token.kind == TokenKind::LineComment {
+          // nothing may share a line with a line comment, or it would be
+          // absorbed into the comment when the output is parsed again
           items.push_signal(Signal::NewLine);
           swallow_ws = true;
         } else {

@@ -12,6 +12,11 @@ fn main() {
   if std::env::args().nth(3).as_deref() == Some("expanded") {
     config.clause_style = lax_sql::configuration::ClauseStyle::Expanded;
   }
+  match std::env::args().nth(4).as_deref() {
+    Some("upper") => config.keyword_case = lax_sql::configuration::KeywordCase::Upper,
+    Some("lower") => config.keyword_case = lax_sql::configuration::KeywordCase::Lower,
+    _ => {}
+  }
   match lax_sql::format_text(Path::new(&path), &text, &config) {
     Ok(Some(output)) => print!("{}", output),
     Ok(None) => print!("{}", text),

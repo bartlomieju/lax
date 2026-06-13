@@ -34,7 +34,7 @@ a,b.foo>c{color:red}
 
 [expect]
 a,
-b.foo>c {
+b.foo > c {
   color: red;
 }
 
@@ -154,4 +154,25 @@ a {
 */
 body {
   font-family: 'Arial', sans-serif;
+}
+
+== should normalize whitespace around selector combinators ==
+a>b{x:1}
+.foo+.bar , c~d{y:2}
+
+[expect]
+a > b {
+  x: 1;
+}
+.foo + .bar,
+c ~ d {
+  y: 2;
+}
+
+== should not touch combinator characters nested in parens or brackets ==
+a:not(b>c) [data~="x"] li:nth-child(2n+1) { z: 3 }
+
+[expect]
+a:not(b>c) [data~="x"] li:nth-child(2n+1) {
+  z: 3;
 }
