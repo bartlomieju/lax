@@ -120,8 +120,7 @@ a {
 a{}
 
 [expect]
-a {
-}
+a {}
 
 == should preserve string contents ==
 a { content: "  Hello  World  "; background: url("./a b.png"); }

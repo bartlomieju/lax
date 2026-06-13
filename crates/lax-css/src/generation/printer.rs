@@ -150,8 +150,8 @@ fn gen_statement(statement: &Statement, items: &mut PrintItems, ctx: &Context) {
 fn gen_block(block: &Block, items: &mut PrintItems, ctx: &Context) {
   items.push_string("{".to_string());
   if block.body.is_empty() {
+    // an empty rule collapses to `{}` rather than spanning two lines
     if block.closed {
-      items.push_signal(Signal::NewLine);
       items.push_string("}".to_string());
     }
   } else {
