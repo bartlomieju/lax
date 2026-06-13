@@ -172,6 +172,10 @@ fn gen_selector(tokens: &[Token], items: &mut PrintItems) {
   let mut depth = 0u32;
   let mut pending_space = false;
   let mut swallow_ws = false;
+  // whether any visible token has been emitted yet on this selector, used so
+  // a selector that starts with a combinator (nesting `> *`) gets no leading
+  // space
+  let mut emitted_any = false;
   for token in tokens {
     match token.kind {
       TokenKind::Whitespace { .. } => {
@@ -210,11 +214,14 @@ fn gen_selector(tokens: &[Token], items: &mut PrintItems) {
         if is_open {
           depth += 1;
         }
-        if pending_space || is_combinator {
+        // a combinator gets a leading space only when it follows something;
+        // a selector that starts with one (nesting `> *`) takes no leading space
+        if pending_space || (is_combinator && emitted_any) {
           items.push_space();
           pending_space = false;
         }
         push_text(items, token.text);
+        emitted_any = true;
         if is_combinator {
           items.push_space();
           swallow_ws = true;

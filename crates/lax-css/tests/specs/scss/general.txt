@@ -49,3 +49,19 @@ $breakpoints: (small: 576px, medium: 768px);
   width: calc(1px + 2px // why
     );
 }
+
+== should not add a leading space to a nesting selector that starts with a combinator ==
+.a {
+  >*{ color: red }
+  +div{ x: 1 }
+}
+
+[expect]
+.a {
+  > * {
+    color: red;
+  }
+  + div {
+    x: 1;
+  }
+}
