@@ -116,13 +116,16 @@ impl<'b, 'a> Parser<'b, 'a> {
           semicolon = true;
           break;
         }
-        TokenKind::Word if depth == 0 && !current.is_empty() => {
-          // a clause that is only join prefixes so far, like `left outer`,
-          // must not be split again at the following `join`
-          if self.starts_clause(&token, first_word, prev_significant) && !only_join_prefixes(&current) {
-            clauses.push(trim_ws(&current));
-            current.clear();
-          }
+        // a clause that is only join prefixes so far, like `left outer`,
+        // must not be split again at the following `join`
+        TokenKind::Word
+          if depth == 0
+            && !current.is_empty()
+            && self.starts_clause(&token, first_word, prev_significant)
+            && !only_join_prefixes(&current) =>
+        {
+          clauses.push(trim_ws(&current));
+          current.clear();
         }
         _ => {}
       }
