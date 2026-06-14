@@ -23,7 +23,12 @@ fn format_text_inner(text: &str, config: &Configuration) -> Result<String> {
     return Ok(String::new());
   }
   if config.single_line {
-    return Ok(generation::generate_inline(&statements, text));
+    // keep the newline-terminated contract of the block formatter; consumers
+    // that splice the result into an inline context (e.g. a style attribute)
+    // trim it
+    let mut out = generation::generate_inline(&statements, text);
+    out.push('\n');
+    return Ok(out);
   }
   Ok(dprint_core::formatting::format(
     || generation::generate(&statements, text, config),

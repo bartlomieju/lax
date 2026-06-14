@@ -1,9 +1,9 @@
 ~~ singleLine: true ~~
-== should normalize colon and separator whitespace on one line ==
-width : {a + b}PX; height:1PX;
+== should normalize colon and separator whitespace (placeholder is a masked interpolation) ==
+width : _mnk0430_PX; height:1PX;
 
 [expect]
-width: {a + b}PX; height: 1PX;
+width: _mnk0430_PX; height: 1PX;
 
 == should not invent a trailing semicolon the author omitted ==
 width: 10px; height:1PX
