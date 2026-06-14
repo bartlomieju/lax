@@ -68,3 +68,57 @@ fn astro_without_frontmatter_formats_normally() {
   let result = format_text_with_external(Path::new("file.astro"), input, &config(), &external).unwrap();
   assert_eq!(result.unwrap(), "<html>\n  <body></body>\n</html>\n");
 }
+
+// Simulates a JavaScript formatter: spaces binary operators and appends the
+// statement semicolon and trailing newline that a real formatter would.
+fn js_like(lang: &str, text: &str, _: u32) -> anyhow::Result<Option<String>> {
+  assert_eq!(lang, "ts");
+  let spaced = text.replace(" + ", "+").replace('+', " + ");
+  Ok(Some(format!("{};\n", spaced)))
+}
+
+#[test]
+fn interpolation_expressions_are_formatted() {
+  let input = "<p>{{a+b}}</p>\n";
+  let result = format_text_with_external(Path::new("file.vue"), input, &config(), &js_like)
+    .unwrap()
+    .unwrap();
+  assert_eq!(result, "<p>{{ a + b }}</p>\n");
+}
+
+#[test]
+fn interpolation_braces_are_normalized() {
+  let input = "<p>{{user.name}} and {{ a+b }}</p>\n";
+  let result = format_text_with_external(Path::new("file.vue"), input, &config(), &js_like)
+    .unwrap()
+    .unwrap();
+  assert_eq!(result, "<p>{{ user.name }} and {{ a + b }}</p>\n");
+}
+
+#[test]
+fn non_js_interpolations_are_left_verbatim() {
+  // the formatter rejects non-JavaScript interpolations; they must survive and
+  // must not fail the whole format
+  let input = "<ul>{{#each items}}<li>{{ item|upper }}</li>{{/each}}</ul>\n";
+  let external = |_: &str, expr: &str, _: u32| {
+    if expr.contains('#') || expr.contains('/') || expr.contains('|') {
+      anyhow::bail!("not valid javascript")
+    } else {
+      Ok(Some(format!("{};\n", expr)))
+    }
+  };
+  let result = format_text_with_external(Path::new("file.html"), input, &config(), &external).unwrap();
+  let out = result.unwrap_or_else(|| input.to_string());
+  assert!(out.contains("{{#each items}}"));
+  assert!(out.contains("{{ item|upper }}"));
+  assert!(out.contains("{{/each}}"));
+}
+
+#[test]
+fn triple_brace_raw_interpolations_are_left_verbatim() {
+  let input = "<p>{{{ raw_html }}}</p>\n";
+  let external = |_: &str, _: &str, _: u32| Ok(Some("CLOBBERED;\n".to_string()));
+  let result = format_text_with_external(Path::new("file.html"), input, &config(), &external).unwrap();
+  // unchanged, so format_text_with_external returns None
+  assert!(result.is_none() || result.unwrap().contains("{{{ raw_html }}}"));
+}

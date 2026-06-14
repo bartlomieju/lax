@@ -53,8 +53,9 @@ pub fn generate(
     gen_structural_children(nodes, &mut items, &ctx);
     items.push_signal(Signal::NewLine);
   } else {
-    // a document with top level text flows as written
-    push_text(&mut items, source.trim_end());
+    // a document with top level text flows as written, with `{{ }}`
+    // interpolations still formatted
+    push_content(&mut items, source.trim_end(), &ctx);
     items.push_signal(Signal::NewLine);
   }
   items
@@ -144,7 +145,10 @@ fn gen_structural_children(nodes: &[Node], items: &mut PrintItems, ctx: &Context
 fn gen_node(node: &Node, items: &mut PrintItems, ctx: &Context) {
   match node {
     Node::Comment { text, .. } => push_comment(items, ctx.source, text),
-    Node::Verbatim { span } | Node::Text { span } | Node::RawText { span } => {
+    Node::Text { span } => {
+      push_content(items, &ctx.source[span.0..span.1], ctx);
+    }
+    Node::Verbatim { span } | Node::RawText { span } => {
       push_text(items, &ctx.source[span.0..span.1]);
     }
     Node::Whitespace { .. } => {}
@@ -232,10 +236,11 @@ fn gen_node(node: &Node, items: &mut PrintItems, ctx: &Context) {
           items.push_signal(Signal::NewLine);
         }
       } else {
-        // mixed content is whitespace sensitive and stays as written
+        // mixed content is whitespace sensitive and stays as written, except
+        // that `{{ }}` interpolations inside it are still formatted
         let start = children.first().map(|c| c.span().0).unwrap();
         let end = children.last().map(|c| c.span().1).unwrap();
-        push_text(items, &ctx.source[start..end]);
+        push_content(items, &ctx.source[start..end], ctx);
       }
       if *closed {
         items.push_string(format!("</{}>", name));
@@ -288,6 +293,94 @@ fn gen_open_tag(
   } else {
     items.push_string(">".to_string());
   }
+}
+
+/// Pushes a run of source text, formatting any `{{ }}` interpolations in it.
+fn push_content(items: &mut PrintItems, text: &str, ctx: &Context) {
+  match format_interpolations(text, ctx) {
+    Some(formatted) => push_text(items, &formatted),
+    None => push_text(items, text),
+  }
+}
+
+/// Formats the expressions inside `{{ ... }}` interpolations in a run of text,
+/// returning the rewritten text when anything changed. Each interpolation
+/// interior is handed to the external formatter as an expression; the braces
+/// are normalized to `{{ expr }}`. Triple braces (`{{{ }}}`, raw mustache) are
+/// left alone, and anything the formatter cannot parse as an expression
+/// (template filters, partials, plain text) stays exactly as written, so this
+/// never reinterprets non-JavaScript interpolations. Only the expression
+/// interior moves; all surrounding text and whitespace is preserved.
+fn format_interpolations(text: &str, ctx: &Context) -> Option<String> {
+  let external = ctx.external?;
+  if !text.contains("{{") {
+    return None;
+  }
+  let b = text.as_bytes();
+  let mut out = String::new();
+  let mut last = 0;
+  let mut i = 0;
+  let mut changed = false;
+  while i + 1 < b.len() {
+    // a `{{` that is not part of a `{{{ }}}` raw block on either side
+    let is_open = b[i] == b'{' && b[i + 1] == b'{' && b.get(i + 2) != Some(&b'{') && (i == 0 || b[i - 1] != b'{');
+    if is_open
+      && let Some(close) = find_double_close(b, i + 2)
+      && let Some(expr) = format_interpolation_expr(external, &text[i + 2..close], ctx)
+    {
+      let replacement = format!("{{{{ {} }}}}", expr);
+      // only count as a change when the braces or expression actually move
+      if replacement != text[i..close + 2] {
+        changed = true;
+      }
+      out.push_str(&text[last..i]);
+      out.push_str(&replacement);
+      last = close + 2;
+      i = close + 2;
+      continue;
+    }
+    i += 1;
+  }
+  if !changed {
+    return None;
+  }
+  out.push_str(&text[last..]);
+  Some(out)
+}
+
+/// Index of the first `}}` at or after `from`, if any.
+fn find_double_close(b: &[u8], from: usize) -> Option<usize> {
+  let mut j = from;
+  while j + 1 < b.len() {
+    if b[j] == b'}' && b[j + 1] == b'}' {
+      return Some(j);
+    }
+    j += 1;
+  }
+  None
+}
+
+/// Formats a single interpolation interior as a JavaScript expression. Returns
+/// None (keep verbatim) when it is empty, the formatter declines or errors
+/// (not valid JS), or the result would span multiple lines, since an
+/// interpolation cannot contain a line break. A parse error here is expected
+/// for non-JS interpolations and is deliberately not recorded as a failure.
+fn format_interpolation_expr(external: &ExternalFormatter, inner: &str, ctx: &Context) -> Option<String> {
+  let trimmed = inner.trim();
+  if trimmed.is_empty() {
+    return None;
+  }
+  let formatted = match external("ts", trimmed, ctx.line_width) {
+    Ok(Some(formatted)) => formatted,
+    _ => return None,
+  };
+  // the external formatter formats a statement; drop the trailing semicolon
+  // and surrounding whitespace to recover the expression
+  let formatted = formatted.trim().trim_end_matches(';').trim_end();
+  if formatted.is_empty() || formatted.contains('\n') {
+    return None;
+  }
+  Some(formatted.to_string())
 }
 
 /// Runs the external formatter over a script or style body. Returns None
