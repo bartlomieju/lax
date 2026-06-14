@@ -6,6 +6,9 @@ members = [
   "crates/lax-markup",
   "crates/lax-sql",
 ]
+# Standalone comparison benchmarks; kept out of the workspace so the extra
+# (malva, sqlformat) dependencies never affect the workspace build or CI.
+exclude = ["benchmarks"]
 
 [workspace.dependencies]
 anyhow = "1"

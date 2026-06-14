@@ -1,0 +1,20 @@
+# Standalone benchmark harness. Excluded from the workspace so it never
+# affects `cargo test --workspace` or CI. Run with:
+#   cargo run --release --manifest-path benchmarks/Cargo.toml
+[package]
+name = "lax-benchmarks"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+lax-css = { path = "../crates/lax-css" }
+lax-sql = { path = "../crates/lax-sql" }
+lax-markup = { path = "../crates/lax-markup" }
+dprint-core = { version = "0.67.4", features = ["formatting"] }
+malva = "0.16"
+sqlformat = "0.5"
+
+[profile.release]
+opt-level = 3
+lto = true
