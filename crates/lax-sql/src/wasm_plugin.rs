@@ -27,7 +27,7 @@ impl SyncPluginHandler<Configuration> for SqlPluginHandler {
       config: result.config,
       diagnostics: result.diagnostics,
       file_matching: FileMatchingInfo {
-        file_extensions: vec!["css".to_string(), "scss".to_string(), "less".to_string()],
+        file_extensions: vec!["sql".to_string()],
         file_names: vec![],
       },
     }
