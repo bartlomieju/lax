@@ -1,0 +1,213 @@
+name: Release
+
+# One-trigger release for the whole workspace. Pick which crates to release and
+# a single semver bump; this workflow then:
+#   1. bumps the crate versions, commits to main, and tags <crate>-v<version>,
+#      cutting a GitHub release on this repo per tag;
+#   2. publishes the selected source crates to crates.io (OIDC trusted publishing);
+#   3. for lax-css / lax-markup / lax-sql, builds the Wasm plugin and publishes it
+#      to npm (OIDC trusted publishing) and as a dprint registry GitHub release on
+#      the per-plugin repo.
+#
+# The crate version is the single source of truth: the npm package version and
+# the dprint release tag both equal it. Every publish step skips a version that
+# already exists, so a failed downstream job can be re-run safely — but re-running
+# the WHOLE workflow bumps again, so re-run the failed job, not the workflow.
+#
+# Setup required (see npm/README.md and RELEASING.md):
+#   - crates.io trusted publisher on each crate -> repo bartlomieju/lax, workflow
+#     release.yml.
+#   - npm trusted publisher on each package (after a one-time bootstrap publish)
+#     -> same repo + workflow.
+#   - repo secret PLUGIN_RELEASE_TOKEN (PAT with Contents: write on the per-plugin
+#     repos) for the dprint registry releases.
+
+on:
+  workflow_dispatch:
+    inputs:
+      crates:
+        description: "Crates to release: 'all' or a comma list of lax-core,lax-css,lax-markup,lax-sql"
+        default: all
+      bump:
+        description: "Semver bump applied to all selected crates"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      BUMP: ${{ inputs.bump }}
+      CRATES_INPUT: ${{ inputs.crates }}
+    outputs:
+      crate_list: ${{ steps.bump.outputs.crate_list }}
+      wasm_matrix: ${{ steps.bump.outputs.wasm_matrix }}
+      sha: ${{ steps.bump.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-edit
+
+      - name: Bump, commit, tag, release
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ "$CRATES_INPUT" = all ]; then
+            list="lax-core lax-css lax-markup lax-sql"
+          else
+            list=$(echo "$CRATES_INPUT" | tr ',' ' ')
+          fi
+
+          for crate in $list; do
+            echo "Bumping $crate ($BUMP)"
+            cargo set-version --bump "$BUMP" -p "$crate"
+          done
+
+          crate_version() {
+            cargo metadata --no-deps --format-version 1 \
+              | python3 -c "import sys,json;print(next(p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='$1'))"
+          }
+
+          # Commit the bumped Cargo.toml / Cargo.lock to main.
+          crate_list=$(echo "$list" | tr ' ' ',')
+          git add -A
+          git commit -m "chore(release): $crate_list ($BUMP)"
+          git push origin HEAD:main
+
+          # Tag each crate and cut a GitHub release for it on this repo.
+          for crate in $list; do
+            v=$(crate_version "$crate")
+            tag="$crate-v$v"
+            git tag -a "$tag" -m "$crate $v"
+            git push origin "$tag"
+            gh release create "$tag" --title "$tag" --generate-notes
+          done
+
+          # Build the Wasm matrix over the selected plugin crates only.
+          includes=""
+          for crate in $list; do
+            case "$crate" in
+              lax-css)    wasm=lax_css;    repo=bartlomieju/lax-css ;;
+              lax-markup) wasm=lax_markup; repo=bartlomieju/lax-markup ;;
+              lax-sql)    wasm=lax_sql;    repo=bartlomieju/lax-sql ;;
+              *) continue ;;
+            esac
+            v=$(crate_version "$crate")
+            item=$(printf '{"crate":"%s","wasm":"%s","version":"%s","repo":"%s"}' "$crate" "$wasm" "$v" "$repo")
+            includes="${includes:+$includes,}$item"
+          done
+
+          {
+            echo "crate_list=$crate_list"
+            echo "wasm_matrix={\"include\":[$includes]}"
+            echo "sha=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+  crates-io:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # crates.io trusted publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish selected crates (dependency order, skip existing)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          CRATE_LIST: ${{ needs.release.outputs.crate_list }}
+        run: |
+          set -euo pipefail
+          for crate in lax-core lax-css lax-markup lax-sql; do
+            case ",$CRATE_LIST," in *",$crate,"*) ;; *) continue ;; esac
+            version=$(cargo metadata --no-deps --format-version 1 \
+              | python3 -c "import sys,json;print(next(p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='$crate'))")
+            if curl -sf -H "User-Agent: lax-release (github.com/bartlomieju/lax)" \
+              "https://crates.io/api/v1/crates/$crate" \
+              | python3 -c "import sys,json; vs=[v['num'] for v in json.load(sys.stdin).get('versions',[])]; sys.exit(0 if '$version' in vs else 1)"; then
+              echo "$crate@$version already on crates.io — skipping."
+            else
+              echo "Publishing $crate@$version"
+              cargo publish -p "$crate" --locked
+            fi
+          done
+
+  wasm:
+    needs: release
+    if: ${{ fromJSON(needs.release.outputs.wasm_matrix).include[0] != null }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing (OIDC)
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.release.outputs.wasm_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - name: Ensure npm supports trusted publishing (>= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Build Wasm plugin
+        run: cargo build --release --features wasm --target wasm32-unknown-unknown -p ${{ matrix.crate }}
+
+      - name: Publish to npm (trusted publishing / OIDC)
+        working-directory: npm/${{ matrix.crate }}
+        run: |
+          set -euo pipefail
+          cp "../../target/wasm32-unknown-unknown/release/${{ matrix.wasm }}.wasm" plugin.wasm
+          npm pkg set version='${{ matrix.version }}'
+          if npm view "${{ matrix.crate }}@${{ matrix.version }}" version >/dev/null 2>&1; then
+            echo "${{ matrix.crate }}@${{ matrix.version }} already on npm — skipping."
+          else
+            npm publish --access public
+          fi
+
+      - name: Publish dprint registry release
+        env:
+          GH_TOKEN: ${{ secrets.PLUGIN_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          cp "target/wasm32-unknown-unknown/release/${{ matrix.wasm }}.wasm" plugin.wasm
+          tag='${{ matrix.version }}'
+          repo='${{ matrix.repo }}'
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            echo "Release $tag already exists on $repo — skipping."
+          else
+            gh release create "$tag" plugin.wasm \
+              --repo "$repo" \
+              --title "$tag" \
+              --notes "Automated release of ${{ matrix.crate }} v$tag (dprint Wasm plugin)."
+          fi

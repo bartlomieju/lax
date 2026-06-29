@@ -74,7 +74,25 @@ let formatted = lax_css::format_text(Path::new("styles.css"), source, &config)?;
 ```
 
 Each crate also ships a dprint plugin (`wasm32-unknown-unknown`), so it drops
-into any dprint-based toolchain.
+into any dprint-based toolchain. The plugins are published to npm, so you can
+install and pin them with your package manager:
+
+```sh
+npm install --save-dev lax-css lax-markup lax-sql
+```
+
+```jsonc
+// dprint.json
+{
+  "plugins": [
+    "./node_modules/lax-css/plugin.wasm",
+    "./node_modules/lax-markup/plugin.wasm",
+    "./node_modules/lax-sql/plugin.wasm"
+  ]
+}
+```
+
+See [`npm/`](./npm) for the package layout and release process.
 
 ## Development
 
@@ -87,3 +105,8 @@ cargo run --release --manifest-path benchmarks/Cargo.toml   # benchmarks
 The corpus tests assert all three invariants — never errors, idempotent,
 whitespace-only — at multiple widths and configurations, so a regression in
 any of them fails CI.
+
+## Releasing
+
+One workflow bumps versions and publishes to crates.io, npm, and the dprint
+registry. See [RELEASING.md](./RELEASING.md).
