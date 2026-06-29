@@ -1,0 +1,37 @@
+{
+  "name": "lax-markup",
+  "version": "0.2.4",
+  "description": "Lax HTML, XML, SVG, and component (Vue, Svelte, Astro) formatter that never reinterprets your markup — dprint Wasm plugin.",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "plugin.wasm",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bartlomieju/lax.git",
+    "directory": "npm/lax-markup"
+  },
+  "keywords": [
+    "html",
+    "xml",
+    "svg",
+    "vue",
+    "svelte",
+    "astro",
+    "code",
+    "formatter",
+    "dprint",
+    "wasm",
+    "lax"
+  ],
+  "author": "Bartek Iwańczuk",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bartlomieju/lax/issues"
+  },
+  "homepage": "https://github.com/bartlomieju/lax#readme"
+}

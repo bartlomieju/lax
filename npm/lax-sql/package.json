@@ -1,0 +1,32 @@
+{
+  "name": "lax-sql",
+  "version": "0.2.1",
+  "description": "Lax SQL formatter that never reinterprets your code, dialect agnostic by construction — dprint Wasm plugin.",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "plugin.wasm",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bartlomieju/lax.git",
+    "directory": "npm/lax-sql"
+  },
+  "keywords": [
+    "sql",
+    "code",
+    "formatter",
+    "dprint",
+    "wasm",
+    "lax"
+  ],
+  "author": "Bartek Iwańczuk",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bartlomieju/lax/issues"
+  },
+  "homepage": "https://github.com/bartlomieju/lax#readme"
+}
