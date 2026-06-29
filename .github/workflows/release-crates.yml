@@ -1,0 +1,52 @@
+name: Release to crates.io
+
+# Publishes the workspace crates to crates.io using crates.io trusted
+# publishing (OIDC) — no CARGO_REGISTRY_TOKEN secret. The rust-lang auth action
+# exchanges the workflow's OIDC identity for a short-lived, auto-revoked token.
+#
+# Each crate must have a trusted publisher configured on crates.io
+# (crate Settings -> Trusted Publishing) pointing at this repo and the workflow
+# file `release-crates.yml`. All four crates already exist on crates.io, so this
+# is just a one-time settings change per crate — no manual bootstrap publish is
+# needed (that step only applies to any brand-new crate added later).
+#
+# Crates publish in dependency order (lax-core first, since the formatters
+# depend on it). Versions already on crates.io are skipped, so re-runs are safe
+# and you can bump only the crates you changed.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for crates.io trusted publishing (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish crates (dependency order, skip existing versions)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          set -euo pipefail
+          for crate in lax-core lax-css lax-markup lax-sql; do
+            version=$(cargo metadata --no-deps --format-version 1 \
+              | python3 -c "import sys,json;print(next(p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='$crate'))")
+            if curl -sf -H "User-Agent: lax-release (github.com/bartlomieju/lax)" \
+              "https://crates.io/api/v1/crates/$crate" \
+              | python3 -c "import sys,json; vs=[v['num'] for v in json.load(sys.stdin).get('versions',[])]; sys.exit(0 if '$version' in vs else 1)"; then
+              echo "$crate@$version already on crates.io — skipping."
+            else
+              echo "Publishing $crate@$version"
+              cargo publish -p "$crate" --locked
+            fi
+          done
