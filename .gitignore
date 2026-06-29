@@ -2,3 +2,6 @@
 
 /benchmarks/target
 /benchmarks/Cargo.lock
+
+# Wasm artifacts dropped into npm packages at publish time
+/npm/*/plugin.wasm
