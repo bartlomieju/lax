@@ -27,7 +27,15 @@ impl SyncPluginHandler<Configuration> for MarkupPluginHandler {
       config: result.config,
       diagnostics: result.diagnostics,
       file_matching: FileMatchingInfo {
-        file_extensions: vec!["css".to_string(), "scss".to_string(), "less".to_string()],
+        file_extensions: vec![
+          "html".to_string(),
+          "htm".to_string(),
+          "vue".to_string(),
+          "svelte".to_string(),
+          "astro".to_string(),
+          "xml".to_string(),
+          "svg".to_string(),
+        ],
         file_names: vec![],
       },
     }
