@@ -1,7 +1,7 @@
 name: Release
 
 # One-trigger release for the whole workspace. Pick which crates to release and
-# a single semver bump; this workflow then:
+# either a semver bump or an exact version; this workflow then:
 #   1. bumps the crate versions, commits to main, and tags <crate>-v<version>,
 #      cutting a GitHub release on this repo per tag;
 #   2. publishes the selected source crates to crates.io (OIDC trusted publishing);
@@ -29,10 +29,13 @@ on:
         description: "Crates to release: 'all' or a comma list of lax-core,lax-css,lax-markup,lax-sql"
         default: all
       bump:
-        description: "Semver bump applied to all selected crates"
+        description: "Semver bump applied to all selected crates (ignored if 'version' is set)"
         type: choice
         options: [patch, minor, major]
         default: patch
+      version:
+        description: "Exact version for all selected crates, e.g. 0.3.0 (overrides 'bump'). Leave empty to use 'bump'."
+        default: ""
 
 permissions: {}
 
@@ -43,6 +46,7 @@ jobs:
       contents: write
     env:
       BUMP: ${{ inputs.bump }}
+      VERSION: ${{ inputs.version }}
       CRATES_INPUT: ${{ inputs.crates }}
     outputs:
       crate_list: ${{ steps.bump.outputs.crate_list }}
@@ -74,8 +78,13 @@ jobs:
           fi
 
           for crate in $list; do
-            echo "Bumping $crate ($BUMP)"
-            cargo set-version --bump "$BUMP" -p "$crate"
+            if [ -n "$VERSION" ]; then
+              echo "Setting $crate to $VERSION"
+              cargo set-version "$VERSION" -p "$crate"
+            else
+              echo "Bumping $crate ($BUMP)"
+              cargo set-version --bump "$BUMP" -p "$crate"
+            fi
           done
 
           crate_version() {
@@ -86,7 +95,7 @@ jobs:
           # Commit the bumped Cargo.toml / Cargo.lock to main.
           crate_list=$(echo "$list" | tr ' ' ',')
           git add -A
-          git commit -m "chore(release): $crate_list ($BUMP)"
+          git commit -m "chore(release): $crate_list (${VERSION:-$BUMP})"
           git push origin HEAD:main
 
           # Tag each crate and cut a GitHub release for it on this repo.
