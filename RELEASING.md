@@ -9,6 +9,8 @@ Inputs:
 
 - **crates** — `all`, or a comma list of `lax-core,lax-css,lax-markup,lax-sql`.
 - **bump** — `patch` / `minor` / `major`, applied to every selected crate.
+- **version** — optional exact version (e.g. `0.3.0`) set on every selected
+  crate; overrides **bump**. Use this to align all crates onto one version.
 
 Given those, the workflow:
 
