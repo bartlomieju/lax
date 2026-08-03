@@ -51,13 +51,11 @@ pub fn generate(
   };
   if can_restructure(nodes, false, true) {
     gen_structural_children(nodes, &mut items, &ctx);
-    items.push_signal(Signal::NewLine);
   } else {
-    // a document with top level text flows as written, with `{{ }}`
-    // interpolations still formatted
-    push_content(&mut items, source.trim_end(), &ctx);
-    items.push_signal(Signal::NewLine);
+    // a document with top level text flows as written
+    gen_flow_children(nodes, &mut items, &ctx);
   }
+  items.push_signal(Signal::NewLine);
   items
 }
 
@@ -139,6 +137,37 @@ fn gen_structural_children(nodes: &[Node], items: &mut PrintItems, ctx: &Context
       ignore_next = true;
     }
     gen_node(node, items, ctx);
+  }
+}
+
+/// Prints a node list whose gaps are whitespace sensitive. Every byte between
+/// the nodes is kept exactly as written, so nothing that renders can move, but
+/// each element still formats its own interior: it decides on its own whether
+/// its children can be restructured, and script and style bodies still reach
+/// the external formatter.
+///
+/// This is what a document with top level text gets. Emitting the whole source
+/// verbatim instead would mean that a single unpinnable text run, such as a
+/// Svelte `{#if}` block or a bare `{expr}` at the root, silently turned off
+/// formatting for every element in the file.
+fn gen_flow_children(nodes: &[Node], items: &mut PrintItems, ctx: &Context) {
+  let mut prev_end: Option<usize> = None;
+  for node in nodes {
+    let (start, end) = node.span();
+    // anything the parser did not attribute to a node, such as the whitespace
+    // between two of them, is copied across untouched
+    if let Some(prev_end) = prev_end
+      && prev_end < start
+    {
+      push_text(items, &ctx.source[prev_end..start]);
+    }
+    match node {
+      Node::Element { .. } => gen_node(node, items, ctx),
+      // text keeps its `{{ }}` interpolations formatted, matching what the
+      // verbatim path used to do for the document as a whole
+      _ => push_content(items, &ctx.source[start..end], ctx),
+    }
+    prev_end = Some(end);
   }
 }
 

@@ -174,3 +174,25 @@
   <section    class="x"   >   </section>
   <section class="y"></section>
 </div>
+
+== an interpolated tag name stays in the tag name ==
+<div>
+<h{{ level }}> Hello </h{{ level }}>
+<h{{ part }}a> Hello </h{{ part }}a>
+</div>
+
+[expect]
+<div>
+  <h{{ level }}> Hello </h{{ level }}>
+  <h{{ part }}a> Hello </h{{ part }}a>
+</div>
+
+== a tag name that is only an interpolation pins its container ==
+<div>
+<{{ tag }}> Hello </{{ tag }}>
+</div>
+
+[expect]
+<div>
+<{{ tag }}> Hello </{{ tag }}>
+</div>

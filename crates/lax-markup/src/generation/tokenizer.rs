@@ -161,8 +161,23 @@ pub fn tokenize(text: &str) -> Vec<Event<'_>> {
 }
 
 fn scan_name(bytes: &[u8], mut i: usize) -> usize {
-  while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || matches!(bytes[i], b'-' | b'_' | b':' | b'.')) {
-    i += 1;
+  while i < bytes.len() {
+    if bytes[i].is_ascii_alphanumeric() || matches!(bytes[i], b'-' | b'_' | b':' | b'.') {
+      i += 1;
+    } else if bytes[i] == b'{' {
+      // a template expression can be the whole tag name or a part of it, as
+      // in `<{{ tag }}>`, `<h{{ level }}>` and `<h{{ part }}a>`. It has to
+      // stay in the name: as an attribute it would be reprinted with a space
+      // in front, and the matching close tag would lose it entirely.
+      let end = scan_balanced_braces(bytes, i);
+      if end == i + 1 {
+        // unbalanced, so not an expression
+        break;
+      }
+      i = end;
+    } else {
+      break;
+    }
   }
   i
 }
