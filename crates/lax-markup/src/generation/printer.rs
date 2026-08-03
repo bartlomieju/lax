@@ -399,6 +399,17 @@ fn format_interpolation_expr(external: &ExternalFormatter, inner: &str, ctx: &Co
   if trimmed.is_empty() {
     return None;
   }
+  // Mustache/Handlebars control tags (`{{#section}}`, `{{/section}}`,
+  // `{{^inverted}}`, `{{> partial}}`, `{{& unescaped}}`, `{{! comment}}`,
+  // `{{= =}}`, `{{.}}` and the inheritance sigils `{{< }}`/`{{$ }}`) are not
+  // JavaScript expressions, so they must never be handed to the JS formatter
+  // and must stay exactly as written. We skip them explicitly rather than
+  // relying on the formatter to reject them: a permissive parser happily reads
+  // `#section` as a private-name reference and would otherwise space it to
+  // `{{ #section }}`, which is wrong and asymmetric with the closing tag.
+  if is_mustache_sigil(trimmed.as_bytes()[0]) {
+    return None;
+  }
   let formatted = match external("ts", trimmed, ctx.line_width) {
     Ok(Some(formatted)) => formatted,
     _ => return None,
@@ -410,6 +421,12 @@ fn format_interpolation_expr(external: &ExternalFormatter, inner: &str, ctx: &Co
     return None;
   }
   Some(formatted.to_string())
+}
+
+/// Whether `c` is a leading sigil that marks a Mustache/Handlebars control tag
+/// rather than a plain interpolated expression. Such tags are left verbatim.
+fn is_mustache_sigil(c: u8) -> bool {
+  matches!(c, b'#' | b'/' | b'^' | b'>' | b'&' | b'!' | b'=' | b'<' | b'$' | b'.')
 }
 
 /// Runs the external formatter over a script or style body. Returns None
