@@ -115,6 +115,24 @@ fn non_js_interpolations_are_left_verbatim() {
 }
 
 #[test]
+fn mustache_sigil_tags_are_left_verbatim_even_when_formatter_accepts_them() {
+  // A permissive JS formatter reads `#emphasize` as a private-name reference and
+  // would space it to `{{ #emphasize }}`. Section/partial/close tags are mustache
+  // control structures, not expressions, and must stay exactly as written so the
+  // open form (`{{#emphasize}}`) stays symmetric with the close (`{{/emphasize}}`).
+  let input = "<p>{{#emphasize}}{{string}}{{/emphasize}}{{.}}{{> partial}}</p>\n";
+  let external = |_: &str, expr: &str, _: u32| Ok(Some(format!("{};\n", expr)));
+  let result = format_text_with_external(Path::new("file.html"), input, &config(), &external)
+    .unwrap()
+    .unwrap();
+  // sigil tags untouched, plain variable normalized to spaced form
+  assert_eq!(
+    result,
+    "<p>{{#emphasize}}{{ string }}{{/emphasize}}{{.}}{{> partial}}</p>\n"
+  );
+}
+
+#[test]
 fn triple_brace_raw_interpolations_are_left_verbatim() {
   let input = "<p>{{{ raw_html }}}</p>\n";
   let external = |_: &str, _: &str, _: u32| Ok(Some("CLOBBERED;\n".to_string()));
