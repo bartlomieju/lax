@@ -69,3 +69,31 @@ clicks: {count}
 <span>less</span>
 {/if}
 </div>
+
+== a top level svelte block does not stop the rest of the file from being formatted ==
+<div>
+<span>a</span>
+</div>
+{#if x}
+y
+{/if}
+
+[expect]
+<div>
+  <span>a</span>
+</div>
+{#if x}
+y
+{/if}
+
+== a bare top level interpolation does not stop the rest of the file from being formatted ==
+<div>
+<span>a</span>
+</div>
+{count}
+
+[expect]
+<div>
+  <span>a</span>
+</div>
+{count}
