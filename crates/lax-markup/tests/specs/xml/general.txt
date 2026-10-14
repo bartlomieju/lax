@@ -34,6 +34,22 @@
   <data><![CDATA[ <not> markup & such ]]></data>
 </root>
 
+== should keep the whitespace around cdata, which is text ==
+<record>
+<field name="value"><![CDATA[TEST<br/>({db_name})]]></field>
+<field
+    name="description"
+><![CDATA[ <span>Browse <b>contacts</b></span>]]></field>
+</record>
+
+[expect]
+<record>
+  <field name="value"><![CDATA[TEST<br/>({db_name})]]></field>
+  <field
+    name="description"
+  ><![CDATA[ <span>Browse <b>contacts</b></span>]]></field>
+</record>
+
 == should format svg ==
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 <g fill="none">

@@ -82,7 +82,7 @@ fn is_block_node(node: &Node) -> bool {
 fn can_restructure(children: &[Node], parent_inline: bool, root: bool) -> bool {
   if children
     .iter()
-    .any(|c| matches!(c, Node::Text { .. } | Node::RawText { .. }))
+    .any(|c| matches!(c, Node::Text { .. } | Node::RawText { .. } | Node::CData { .. }))
   {
     return false;
   }
@@ -177,7 +177,7 @@ fn gen_node(node: &Node, items: &mut PrintItems, ctx: &Context) {
     Node::Text { span } => {
       push_content(items, &ctx.source[span.0..span.1], ctx);
     }
-    Node::Verbatim { span } | Node::RawText { span } => {
+    Node::Verbatim { span } | Node::RawText { span } | Node::CData { span } => {
       push_text(items, &ctx.source[span.0..span.1]);
     }
     Node::Whitespace { .. } => {}

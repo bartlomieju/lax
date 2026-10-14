@@ -39,6 +39,11 @@ pub enum Node<'a> {
   Verbatim {
     span: (usize, usize),
   },
+  /// `<![CDATA[ ... ]]>`: character data, so text as far as the whitespace
+  /// around it is concerned, printed as written.
+  CData {
+    span: (usize, usize),
+  },
 }
 
 impl<'a> Node<'a> {
@@ -49,6 +54,7 @@ impl<'a> Node<'a> {
       | Node::RawText { span }
       | Node::Comment { span, .. }
       | Node::Verbatim { span }
+      | Node::CData { span }
       | Node::Whitespace { span, .. } => *span,
     }
   }
@@ -98,7 +104,8 @@ impl<'a> Parser<'a> {
           span: event.span,
         }),
         EventKind::Comment { text } => children.push(Node::Comment { text, span: event.span }),
-        EventKind::Doctype | EventKind::CData => children.push(Node::Verbatim { span: event.span }),
+        EventKind::Doctype => children.push(Node::Verbatim { span: event.span }),
+        EventKind::CData => children.push(Node::CData { span: event.span }),
         EventKind::RawText => children.push(Node::RawText { span: event.span }),
         EventKind::CloseTag { .. } => unreachable!(),
         EventKind::OpenTag {
